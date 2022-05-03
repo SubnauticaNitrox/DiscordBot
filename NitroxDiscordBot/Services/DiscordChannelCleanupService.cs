@@ -45,12 +45,15 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
     {
         schedules.Clear();
 
-        var taskCount = obj.CleanupTasks.Count();
+        var taskCount = obj.CleanupTasks?.Count() ?? 0;
         var turnedOff = timer.Enabled && taskCount < 1;
         timer.Enabled = taskCount >= 1;
         if (turnedOff)
         {
             log.LogInformation("Cleanup service disabled");
+        }
+        if (!timer.Enabled)
+        {
             return;
         }
 
