@@ -103,25 +103,29 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
 
         timer.Start();
 
-        while (!serviceCancellationSource.IsCancellationRequested)
+        // Fire and forget task that executes the cleanup, which is cancellable via cancel token.
+        _ = Task.Run(async () =>
         {
-            while (!queue.IsEmpty)
+            while (!serviceCancellationSource.IsCancellationRequested)
             {
-                if (queue.TryDequeue(out DiscordChannelCleanupConfig.ChannelCleanup? cleanup))
+                while (!queue.IsEmpty)
                 {
-                    await bot.DeleteOldMessagesAsync(cleanup.ChannelId, cleanup.MaxAge, cancellationToken);
+                    if (queue.TryDequeue(out DiscordChannelCleanupConfig.ChannelCleanup? cleanup))
+                    {
+                        await bot.DeleteOldMessagesAsync(cleanup.ChannelId, cleanup.MaxAge, cancellationToken);
+                    }
+                }
+
+                try
+                {
+                    await Task.Delay(100, serviceCancellationSource.Token);
+                }
+                catch (TaskCanceledException)
+                {
+                    // ignored
                 }
             }
-
-            try
-            {
-                await Task.Delay(100, cancellationToken);
-            }
-            catch (TaskCanceledException)
-            {
-                // ignored
-            }
-        }
+        }, serviceCancellationSource.Token).ConfigureAwait(false);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)

@@ -65,7 +65,14 @@ public class NitroxBotService : IHostedService
             }
         }
 
-        log.LogInformation($"Deleted {count} message(s) older than {age} from channel '{channel.Name}'");
+        if (count > 0)
+        {
+            log.LogInformation($"Deleted {count} message(s) older than {age} from channel '{channel.Name}'");
+        }
+        else
+        {
+            log.LogInformation($"Nothing was deleted from channel '{channel.Name}'");
+        }
     }
 
     public async Task WaitForReadyAsync(CancellationToken cancellationToken)
