@@ -10,7 +10,7 @@ namespace NitroxDiscordBot.Services;
 /// <summary>
 ///     Runs scheduled tasks for Nitrox Discord server.
 /// </summary>
-public class NitroxBotService : IHostedService
+public class NitroxBotService : IHostedService, IDisposable
 {
     private readonly ILogger log;
     private readonly DiscordSocketClient client;
@@ -111,5 +111,11 @@ public class NitroxBotService : IHostedService
         }
 
         return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        client.Log -= ClientLogReceived;
+        client.Dispose();
     }
 }

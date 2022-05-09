@@ -58,7 +58,7 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
         }
 
         log.LogInformation($"Found {taskCount} cleanup tasks");
-        foreach (DiscordChannelCleanupConfig.ChannelCleanup task in obj.CleanupTasks)
+        foreach (DiscordChannelCleanupConfig.ChannelCleanup task in obj.CleanupTasks!)
         {
             log.LogInformation(task.ToString());
         }
@@ -72,7 +72,7 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
         }
 
         // Check if schedule indicates that task should run now, keep track if task already ran.
-        foreach (DiscordChannelCleanupConfig.ChannelCleanup task in options.CurrentValue.CleanupTasks)
+        foreach (DiscordChannelCleanupConfig.ChannelCleanup task in options.CurrentValue.CleanupTasks!)
         {
             if (serviceCancellationSource.IsCancellationRequested)
             {
