@@ -1,5 +1,5 @@
 # NitroxDiscordBot
-Discord bot used by Nitrox Server
+Discord bot used by Nitrox team.
 
 ## Setup
 
