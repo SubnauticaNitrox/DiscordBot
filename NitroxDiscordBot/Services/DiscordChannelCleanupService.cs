@@ -26,13 +26,13 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
     /// <summary>
     ///     Used to neatly exit this service.
     /// </summary>
-    private readonly CancellationTokenSource serviceCancellationSource = new();
+    private CancellationTokenSource? serviceCancellationSource;
 
     private readonly IDisposable onChangeListener;
     private readonly IOptionsMonitor<DiscordChannelCleanupConfig> options;
 
     /// <summary>
-    ///     Cleanup tasks that are submitted to based on the <see cref="schedules" />.
+    ///     Cleanup tasks that are submitted to, based on the <see cref="schedules" />.
     /// </summary>
     private readonly ConcurrentQueue<DiscordChannelCleanupConfig.ChannelCleanup> queue = new();
 
@@ -82,7 +82,7 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
         // Check if schedule indicates that task should run now, keep track if task already ran.
         foreach (DiscordChannelCleanupConfig.ChannelCleanup task in options.CurrentValue.CleanupTasks!)
         {
-            if (serviceCancellationSource.IsCancellationRequested)
+            if (serviceCancellationSource?.IsCancellationRequested == true)
             {
                 break;
             }
@@ -103,6 +103,7 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        serviceCancellationSource = new();
         await bot.WaitForReadyAsync(cancellationToken);
         if (!bot.IsConnected)
         {
@@ -137,10 +138,11 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
             .ConfigureAwait(false);
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public Task StopAsync(CancellationToken cancellationToken)
     {
         timer.Stop();
-        serviceCancellationSource.Cancel();
+        serviceCancellationSource?.Cancel();
+        return Task.CompletedTask;
     }
 
     public void Dispose()
