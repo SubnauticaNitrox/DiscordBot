@@ -17,6 +17,10 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
     private readonly NitroxBotService bot;
     private readonly ILogger<DiscordChannelCleanupService> log;
     private readonly Timer timer;
+
+    /// <summary>
+    ///     Cleanup schedules that are checked by this service.
+    /// </summary>
     private readonly ConcurrentDictionary<DiscordChannelCleanupConfig.ChannelCleanup, DateTime> schedules = new();
 
     /// <summary>
@@ -26,6 +30,10 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
 
     private readonly IDisposable onChangeListener;
     private readonly IOptionsMonitor<DiscordChannelCleanupConfig> options;
+
+    /// <summary>
+    ///     Cleanup tasks that are submitted to based on the <see cref="schedules" />.
+    /// </summary>
     private readonly ConcurrentQueue<DiscordChannelCleanupConfig.ChannelCleanup> queue = new();
 
     public DiscordChannelCleanupService(NitroxBotService bot, IOptionsMonitor<DiscordChannelCleanupConfig> options, ILogger<DiscordChannelCleanupService> log)
@@ -105,27 +113,28 @@ public class DiscordChannelCleanupService : IHostedService, IDisposable
 
         // Fire and forget task that executes the cleanup, which is cancellable via cancel token.
         _ = Task.Run(async () =>
-        {
-            while (!serviceCancellationSource.IsCancellationRequested)
             {
-                while (!queue.IsEmpty)
+                while (!serviceCancellationSource.IsCancellationRequested)
                 {
-                    if (queue.TryDequeue(out DiscordChannelCleanupConfig.ChannelCleanup? cleanup))
+                    while (!queue.IsEmpty)
                     {
-                        await bot.DeleteOldMessagesAsync(cleanup.ChannelId, cleanup.MaxAge, cancellationToken);
+                        if (queue.TryDequeue(out DiscordChannelCleanupConfig.ChannelCleanup? cleanup))
+                        {
+                            await bot.DeleteOldMessagesAsync(cleanup.ChannelId, cleanup.MaxAge, serviceCancellationSource.Token);
+                        }
+                    }
+
+                    try
+                    {
+                        await Task.Delay(100, serviceCancellationSource.Token);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        // ignored
                     }
                 }
-
-                try
-                {
-                    await Task.Delay(100, serviceCancellationSource.Token);
-                }
-                catch (TaskCanceledException)
-                {
-                    // ignored
-                }
-            }
-        }, serviceCancellationSource.Token).ConfigureAwait(false);
+            }, serviceCancellationSource.Token)
+            .ConfigureAwait(false);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
