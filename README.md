@@ -16,9 +16,10 @@ https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permission
     "CleanupTasks": [
         {
             "ChannelId": 598546552918900774,
-            "MaxAge": "0:1",
+            "MaxAge": "1.0:0",
             "Schedule": "* * * * *"
         }
     ]
 }
 ```
+MaxAge is a `TimeSpan` format for 1 day
