@@ -8,6 +8,6 @@ public class NitroxBotConfig
     ///     Token used to connect to Discord API.
     /// </summary>
     [Required]
-    [RegularExpression(@"[a-zA-Z0-9\.]{40,}")]
+    [RegularExpression(@"[a-zA-Z0-9\._]{58,}")]
     public string Token { get; set; } = "";
 }

@@ -23,11 +23,13 @@ public static class Program
                 // Configuration
                 IConfiguration config = context.Configuration;
                 services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations();
-                services.AddOptions<DiscordChannelCleanupConfig>().Bind(config).ValidateDataAnnotations();
+                services.AddOptions<ChannelCleanupConfig>().Bind(config).ValidateDataAnnotations();
+                services.AddOptions<MotdConfig>().Bind(config).ValidateDataAnnotations();
 
                 // Services
                 services.AddSingleton<NitroxBotService>().AddHostedService(provider => provider.GetRequiredService<NitroxBotService>());
-                services.AddHostedService<DiscordChannelCleanupService>();
+                services.AddHostedService<ChannelCleanupService>();
+                services.AddHostedService<MotdService>();
             });
         await hostBuilder
             .Build()

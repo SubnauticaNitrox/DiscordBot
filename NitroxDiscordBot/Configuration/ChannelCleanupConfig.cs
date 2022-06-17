@@ -2,7 +2,7 @@
 
 namespace NitroxDiscordBot.Configuration;
 
-public class DiscordChannelCleanupConfig
+public class ChannelCleanupConfig
 {
     public IEnumerable<ChannelCleanup>? CleanupTasks { get; set; }
 
