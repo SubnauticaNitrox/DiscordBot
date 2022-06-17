@@ -9,6 +9,10 @@ Discord bot used by Nitrox team.
 https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permissions=17179943952&scope=bot
 4. Run this application
 
+## Features
+ - Specifiying messages for MOTD channels
+ - Purging channels of "old" messages
+
 ## Example appsettings.json file
 ```json
 {
@@ -18,6 +22,22 @@ https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permission
             "ChannelId": 598546552918900774,
             "MaxAge": "1.0:0",
             "Schedule": "* * * * *"
+        }
+    ],
+    "ChannelMotds": [
+        {
+            "ChannelId": 970914315307724850,
+            "Messages": [
+                {
+                    "Title": "Name of author",
+                    "Fields": [
+                        {
+                            "Name": "My field title",
+                            "Content": "My field message"
+                        }
+                    ]
+                },
+            ]
         }
     ]
 }
