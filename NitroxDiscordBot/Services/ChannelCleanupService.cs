@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Reactive.Linq;
 using System.Timers;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -28,8 +29,9 @@ public class ChannelCleanupService : IHostedService, IDisposable
     /// </summary>
     private CancellationTokenSource? serviceCancellationSource;
 
-    private readonly IDisposable onChangeListener;
     private readonly IOptionsMonitor<ChannelCleanupConfig> options;
+    private readonly IDisposable? configChangeSubscription;
+
 
     /// <summary>
     ///     Cleanup tasks that are submitted to, based on the <see cref="schedules" />.
@@ -46,7 +48,7 @@ public class ChannelCleanupService : IHostedService, IDisposable
         timer.Elapsed += TimerOnElapsed;
 
         OptionsChanged(options.CurrentValue);
-        onChangeListener = options.OnChange(OptionsChanged);
+        configChangeSubscription = options.CreateObservable().Throttle(TimeSpan.FromSeconds(2)).Subscribe(OptionsChanged);
     }
 
     private void OptionsChanged(ChannelCleanupConfig obj)
@@ -149,6 +151,6 @@ public class ChannelCleanupService : IHostedService, IDisposable
     public void Dispose()
     {
         timer.Dispose();
-        onChangeListener.Dispose();
+        configChangeSubscription?.Dispose();
     }
 }
