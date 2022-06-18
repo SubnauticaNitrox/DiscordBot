@@ -51,6 +51,7 @@ public class MotdService : IHostedService
                     .WithThumbnailUrl(message.ThumbnailUrl)
                     .WithImageUrl(message.ImageUrl)
                     .WithFooter(message.Footer, message.FooterIconUrl)
+                    .WithColor(message.Color.HexToUint())
                     .WithFields(message.Fields?.Select(f => new EmbedFieldBuilder().WithName(f.Name).WithValue(f.Content).WithIsInline(f.IsInline)) ??
                                 ArraySegment<EmbedFieldBuilder>.Empty);
                 await bot.CreateOrUpdateMessage(motd.ChannelId, index, embed.Build());

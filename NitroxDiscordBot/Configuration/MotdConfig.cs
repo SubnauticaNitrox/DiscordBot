@@ -29,6 +29,7 @@ public class MotdConfig
         public string Footer { get; set; } = "";
         public string FooterIconUrl { get; set; } = "";
         public string ThumbnailUrl { get; set; } = "";
+        public string Color { get; set; } = "#00FFFF";
         public IEnumerable<Field>? Fields { get; set; }
     }
 }
