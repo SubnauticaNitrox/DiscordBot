@@ -1,7 +1,5 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NitroxDiscordBot.Configuration;
 
@@ -17,7 +15,7 @@ public class NitroxBotService : IHostedService, IDisposable
     private readonly IOptionsMonitor<NitroxBotConfig> config;
 
     /// <summary>
-    ///     Used as anchor point for fetching early messages.
+    ///     Used as anchor point for fetching early messages from a Discord channel.
     /// </summary>
     private const ulong EarliestSnowflakeId = 5000000;
 
@@ -51,7 +49,7 @@ public class NitroxBotService : IHostedService, IDisposable
 
         var count = 0;
         DateTimeOffset now = DateTimeOffset.UtcNow;
-        log.LogInformation($"Running old messages cleanup on channel '{channel.Name}'");
+        log.LogInformation("Running old messages cleanup on channel '{ChannelName}'", channel.Name);
         await foreach (IReadOnlyCollection<IMessage>? buffer in channel.GetMessagesAsync(EarliestSnowflakeId, Direction.After).WithCancellation(cancellationToken))
         {
             if (buffer == null)
@@ -63,7 +61,7 @@ public class NitroxBotService : IHostedService, IDisposable
             {
                 if (message.Timestamp + age < now)
                 {
-                    log.LogInformation($"Deleting message: '{message.Content}' with timestamp: {message.Timestamp}");
+                    log.LogInformation("Deleting message: '{MessageContent}' with timestamp: {MessageTimestamp}", message.Content, message.Timestamp);
                     await message.DeleteAsync();
                     count++;
                 }
@@ -72,11 +70,11 @@ public class NitroxBotService : IHostedService, IDisposable
 
         if (count > 0)
         {
-            log.LogInformation($"Deleted {count} message(s) older than {age} from channel '{channel.Name}'");
+            log.LogInformation("Deleted {Count} message(s) older than {Age} from channel '{ChannelName}'", count, age, channel.Name);
         }
         else
         {
-            log.LogInformation($"Nothing was deleted from channel '{channel.Name}'");
+            log.LogInformation("Nothing needed to be deleted from channel '{ChannelName}'", channel.Name);
         }
     }
 
@@ -102,7 +100,7 @@ public class NitroxBotService : IHostedService, IDisposable
         // If author of current message is different then we can't edit it.
         if (messages[index].Author.Id != client.CurrentUser?.Id)
         {
-            log.LogError($"Unable to modify message at index {index} because it is authored by another user: '{messages[index].Author.Username}' ({messages[index].Author.Id})");
+            log.LogError("Unable to modify message at index {Index} because it is authored by another user: '{AuthorUsername}' ({AuthorId})", index, messages[index].Author.Username, messages[index].Author.Id);
             return;
         }
 
@@ -129,7 +127,7 @@ public class NitroxBotService : IHostedService, IDisposable
         T? channel = await client.GetChannelAsync(channelId) as T;
         if (channel == null)
         {
-            log.LogWarning($"Couldn't find channel of type {typeof(T).Name} with id {channelId}");
+            log.LogWarning("Couldn't find channel of type {ChannelType} with id {ChannelId}", typeof(T).Name, channelId);
         }
         return channel;
     }
@@ -162,7 +160,7 @@ public class NitroxBotService : IHostedService, IDisposable
     {
         if (logEntry.Exception is not null)
         {
-            log.LogError(logEntry.Exception.ToString());
+            log.LogError(logEntry.Exception, "Discord API error");
         }
         else
         {

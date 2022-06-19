@@ -2,7 +2,7 @@
 using System.Reactive.Linq;
 using Microsoft.Extensions.Options;
 
-namespace NitroxDiscordBot;
+namespace NitroxDiscordBot.Core;
 
 public static class Extensions
 {
@@ -13,7 +13,7 @@ public static class Extensions
 
     public static uint HexToUint(this string hex)
     {
-        uint.TryParse(hex.AsSpan().TrimStart('#'), NumberStyles.HexNumber, null, out uint number);
+        uint.TryParse(hex.AsSpan().TrimStart('#'), NumberStyles.HexNumber, null, out var number);
         return number;
     }
 }

@@ -1,27 +1,24 @@
 ﻿using System.Reactive.Linq;
 using Discord;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NitroxDiscordBot.Configuration;
+using NitroxDiscordBot.Core;
 
 namespace NitroxDiscordBot.Services;
 
 /// <summary>
 ///     Adds and maintains message-of-the-day channels based on the <see cref="MotdConfig" />.
 /// </summary>
-public class MotdService : IHostedService
+public class MotdService : BaseDiscordBotService
 {
-    private readonly NitroxBotService bot;
     private readonly ILogger<MotdService> log;
     private readonly IObservable<MotdConfig> configChangedObservable;
     private IDisposable? configChangeSubscription;
 
     private readonly IOptionsMonitor<MotdConfig> options;
 
-    public MotdService(NitroxBotService bot, IOptionsMonitor<MotdConfig> options, ILogger<MotdService> log)
+    public MotdService(NitroxBotService bot, IOptionsMonitor<MotdConfig> options, ILogger<MotdService> log) : base(bot)
     {
-        this.bot = bot;
         this.log = log;
         this.options = options;
         configChangedObservable = options.CreateObservable().Throttle(TimeSpan.FromSeconds(2));
@@ -54,21 +51,20 @@ public class MotdService : IHostedService
                     .WithColor(message.Color.HexToUint())
                     .WithFields(message.Fields?.Select(f => new EmbedFieldBuilder().WithName(f.Name).WithValue(f.Content).WithIsInline(f.IsInline)) ??
                                 ArraySegment<EmbedFieldBuilder>.Empty);
-                await bot.CreateOrUpdateMessage(motd.ChannelId, index, embed.Build());
+                await Bot.CreateOrUpdateMessage(motd.ChannelId, index, embed.Build());
                 log.LogInformation($"Added/updated MOTD in channel #{motd.ChannelId} at index {index}");
                 index++;
             }
         }
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        await bot.WaitForReadyAsync(cancellationToken);
         await OptionsChanged(options.CurrentValue);
         configChangeSubscription = configChangedObservable.Subscribe(config => _ = OptionsChanged(config));
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public override Task StopAsync(CancellationToken cancellationToken)
     {
         configChangeSubscription?.Dispose();
         return Task.CompletedTask;

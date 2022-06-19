@@ -8,17 +8,12 @@ public class ChannelCleanupConfig
 
     public record ChannelCleanup
     {
-        public ulong ChannelId { get; set; }
-        public TimeSpan MaxAge { get; set; }
+        public ulong ChannelId { get; init; }
+        public TimeSpan MaxAge { get; init; }
 
         /// <summary>
         ///     Cron formatted schedule.
         /// </summary>
-        public string Schedule { get; set; } = Cron.Hourly();
-
-        public override string ToString()
-        {
-            return $"{nameof(ChannelId)}: {ChannelId}, {nameof(MaxAge)}: {MaxAge}, {nameof(Schedule)}: {Schedule}";
-        }
+        public string Schedule { get; init; } = Cron.Hourly();
     }
 }

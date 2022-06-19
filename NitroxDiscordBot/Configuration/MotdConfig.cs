@@ -2,6 +2,9 @@
 
 namespace NitroxDiscordBot.Configuration;
 
+/// <summary>
+///     Message-of-the-day (MOTD) configuration.
+/// </summary>
 public class MotdConfig
 {
     public IEnumerable<ChannelMotd>? ChannelMotds { get; set; }

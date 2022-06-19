@@ -1,23 +1,18 @@
 ﻿using System.Collections.Concurrent;
 using System.Reactive.Linq;
-using System.Timers;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NCrontab;
 using NitroxDiscordBot.Configuration;
-using Timer = System.Timers.Timer;
+using NitroxDiscordBot.Core;
 
 namespace NitroxDiscordBot.Services;
 
 /// <summary>
 ///     Cleans up "old" messages from Discord channels.
 /// </summary>
-public class ChannelCleanupService : IHostedService, IDisposable
+public class ChannelCleanupService : BaseDiscordBotService, IDisposable
 {
-    private readonly NitroxBotService bot;
     private readonly ILogger<ChannelCleanupService> log;
-    private readonly Timer timer;
 
     /// <summary>
     ///     Cleanup schedules that are checked by this service.
@@ -32,20 +27,15 @@ public class ChannelCleanupService : IHostedService, IDisposable
     private readonly IOptionsMonitor<ChannelCleanupConfig> options;
     private readonly IDisposable? configChangeSubscription;
 
-
     /// <summary>
     ///     Cleanup tasks that are submitted to, based on the <see cref="schedules" />.
     /// </summary>
-    private readonly ConcurrentQueue<ChannelCleanupConfig.ChannelCleanup> queue = new();
+    private readonly ConcurrentQueue<ChannelCleanupConfig.ChannelCleanup> workQueue = new();
 
-    public ChannelCleanupService(NitroxBotService bot, IOptionsMonitor<ChannelCleanupConfig> options, ILogger<ChannelCleanupService> log)
+    public ChannelCleanupService(NitroxBotService bot, IOptionsMonitor<ChannelCleanupConfig> options, ILogger<ChannelCleanupService> log) : base(bot)
     {
-        this.bot = bot;
         this.log = log;
         this.options = options;
-        timer = new Timer(1000);
-        timer.AutoReset = true;
-        timer.Elapsed += TimerOnElapsed;
 
         OptionsChanged(options.CurrentValue);
         configChangeSubscription = options.CreateObservable().Throttle(TimeSpan.FromSeconds(2)).Subscribe(OptionsChanged);
@@ -54,103 +44,107 @@ public class ChannelCleanupService : IHostedService, IDisposable
     private void OptionsChanged(ChannelCleanupConfig obj)
     {
         schedules.Clear();
+        var tasks = obj.CleanupTasks ?? ArraySegment<ChannelCleanupConfig.ChannelCleanup>.Empty;
 
-        var taskCount = obj.CleanupTasks?.Count() ?? 0;
-        var turnedOff = timer.Enabled && taskCount < 1;
-        timer.Enabled = taskCount >= 1;
+        var taskCount = tasks.Count();
+        var turnedOff = taskCount < 1;
         if (turnedOff)
         {
             log.LogInformation("Cleanup service disabled");
         }
-        if (!timer.Enabled)
-        {
-            return;
-        }
 
-        log.LogInformation($"Found {taskCount} cleanup tasks");
-        foreach (ChannelCleanupConfig.ChannelCleanup task in obj.CleanupTasks!)
+        log.LogInformation("Found {Count} cleanup tasks", taskCount);
+        foreach (ChannelCleanupConfig.ChannelCleanup task in tasks)
         {
             log.LogInformation(task.ToString());
         }
     }
 
-    private void TimerOnElapsed(object? sender, ElapsedEventArgs e)
+    public override Task StartAsync(CancellationToken cancellationToken)
+    {
+        serviceCancellationSource = new CancellationTokenSource();
+
+        _ = Task.Run(async () => await RunQueueHandlerAsync(serviceCancellationSource.Token), cancellationToken);
+        _ = Task.Run(async () => await RunSchedulerAsync(serviceCancellationSource.Token), cancellationToken);
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    ///     Processes the <see cref="workQueue">queued</see> cleanup work.
+    /// </summary>
+    private async Task RunQueueHandlerAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            while (!workQueue.IsEmpty)
+            {
+                if (workQueue.TryDequeue(out ChannelCleanupConfig.ChannelCleanup? cleanup))
+                {
+                    await Bot.DeleteOldMessagesAsync(cleanup.ChannelId, cleanup.MaxAge, cancellationToken);
+                }
+            }
+
+            try
+            {
+                await Task.Delay(100, cancellationToken);
+            }
+            catch (TaskCanceledException)
+            {
+                // ignored
+            }
+        }
+        log.LogDebug("Work queue handler stopped");
+    }
+
+    /// <summary>
+    ///     Emits <see cref="ChannelCleanupConfig.ChannelCleanup">work</see> to the <see cref="workQueue">queue</see> based on the <see cref="schedules"/>.
+    /// </summary>
+    private async Task RunSchedulerAsync(CancellationToken cancellationToken)
     {
         static DateTime GenerateNextOccurrence(ChannelCleanupConfig.ChannelCleanup task)
         {
             return CrontabSchedule.Parse(task.Schedule).GetNextOccurrence(DateTime.UtcNow);
         }
 
-        // Check if schedule indicates that task should run now, keep track if task already ran.
-        IEnumerable<ChannelCleanupConfig.ChannelCleanup> cleanupTasks = options.CurrentValue.CleanupTasks ?? ArraySegment<ChannelCleanupConfig.ChannelCleanup>.Empty;
-        foreach (ChannelCleanupConfig.ChannelCleanup task in cleanupTasks)
+        using PeriodicTimer timer = new(TimeSpan.FromMilliseconds(1000));
+        while (!(serviceCancellationSource?.IsCancellationRequested ?? false))
         {
-            if (serviceCancellationSource?.IsCancellationRequested == true)
+            await timer.WaitForNextTickAsync(cancellationToken);
+
+            // Check if schedule indicates that task should run now, keep track if task already ran.
+            IEnumerable<ChannelCleanupConfig.ChannelCleanup> cleanupTasks = options.CurrentValue.CleanupTasks ?? ArraySegment<ChannelCleanupConfig.ChannelCleanup>.Empty;
+            foreach (ChannelCleanupConfig.ChannelCleanup task in cleanupTasks)
             {
-                break;
-            }
-
-            if (!schedules.TryGetValue(task, out DateTime scheduledTime))
-            {
-                scheduledTime = schedules.AddOrUpdate(task, GenerateNextOccurrence, (t, _) => GenerateNextOccurrence(t));
-            }
-
-            // If scheduled time is in the past, run it now and calc the next occurence.
-            if ((scheduledTime - DateTime.UtcNow).Ticks < 0)
-            {
-                queue.Enqueue(task);
-                schedules.AddOrUpdate(task, GenerateNextOccurrence, (t, _) => GenerateNextOccurrence(t));
-            }
-        }
-    }
-
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        serviceCancellationSource = new CancellationTokenSource();
-        await bot.WaitForReadyAsync(cancellationToken);
-        if (!bot.IsConnected)
-        {
-            throw new Exception("Discord bot has not started yet");
-        }
-
-        timer.Start();
-
-        // Fire and forget task that executes the cleanup, which is cancellable via cancel token.
-        _ = Task.Run(async () =>
-            {
-                while (!serviceCancellationSource.IsCancellationRequested)
+                if (serviceCancellationSource?.IsCancellationRequested == true)
                 {
-                    while (!queue.IsEmpty)
-                    {
-                        if (queue.TryDequeue(out ChannelCleanupConfig.ChannelCleanup? cleanup))
-                        {
-                            await bot.DeleteOldMessagesAsync(cleanup.ChannelId, cleanup.MaxAge, serviceCancellationSource.Token);
-                        }
-                    }
-
-                    try
-                    {
-                        await Task.Delay(100, serviceCancellationSource.Token);
-                    }
-                    catch (TaskCanceledException)
-                    {
-                        // ignored
-                    }
+                    break;
                 }
-            }, serviceCancellationSource.Token)
-            .ConfigureAwait(false);
+
+                if (!schedules.TryGetValue(task, out DateTime scheduledTime))
+                {
+                    scheduledTime = schedules.AddOrUpdate(task, GenerateNextOccurrence, static (t, _) => GenerateNextOccurrence(t));
+                }
+
+                // If scheduled time is in the past, queue for immediate run and calc the next occurence.
+                if ((scheduledTime - DateTime.UtcNow).Ticks < 0)
+                {
+                    workQueue.Enqueue(task);
+                    schedules.AddOrUpdate(task, GenerateNextOccurrence, static (t, _) => GenerateNextOccurrence(t));
+                }
+            }
+        }
+        log.LogDebug("Scheduler stopped");
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public override Task StopAsync(CancellationToken cancellationToken)
     {
-        timer.Stop();
         serviceCancellationSource?.Cancel();
         return Task.CompletedTask;
     }
 
     public void Dispose()
     {
-        timer.Dispose();
         configChangeSubscription?.Dispose();
     }
 }

@@ -1,0 +1,47 @@
+﻿@page "/login"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject NavigationManager NavManager
+@inject ProtectedLocalStorage Store
+@attribute [AllowAnonymous]
+
+<PageTitle>Login</PageTitle>
+
+<form class="col-sm-6">
+    <div>
+        <label for="inputUsername" class="form-label">Username</label>
+        <input type="text" class="form-control" id="inputUsername" @bind="Username">
+    </div>
+    <div>
+        <label for="inputPassword" class="form-label">Password</label>
+        <input type="password" class="form-control" id="inputPassword" @bind="Password">
+    </div>
+    <div class="d-flex justify-content-center align-items-center">
+        <button type="button" class="btn btn-primary flex-fill">Login</button>
+    </div>
+    <div class="row">
+        <div class="col">
+            <hr>
+        </div>
+        <div class="col-auto d-flex justify-content-center align-items-center">OR</div>
+        <div class="col">
+            <hr>
+        </div>
+    </div>
+    <div class="d-flex justify-content-center align-items-center">
+        <button @onclick="DiscordLoginClick" type="button" class="btn btn-primary flex-fill" style="background-color: #545EEB;">
+            Login with <img src="img/discord.svg" alt="Discord" width="24px" style="position: relative; top: -1px">
+        </button>
+    </div>
+</form>
+
+@code {
+
+    private string Username { get; set; }
+    private string Password { get; set; }
+    
+    private async Task DiscordLoginClick()
+    {
+        await Store.SetAsync("username", Username);
+        NavManager.NavigateTo("/motd", true);
+    }
+}
