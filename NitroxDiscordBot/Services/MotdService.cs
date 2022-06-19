@@ -1,9 +1,8 @@
 ﻿using System.Reactive.Linq;
 using Discord;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NitroxDiscordBot.Configuration;
+using NitroxDiscordBot.Core;
 
 namespace NitroxDiscordBot.Services;
 
