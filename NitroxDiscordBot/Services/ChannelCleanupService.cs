@@ -1,11 +1,10 @@
 ﻿using System.Collections.Concurrent;
 using System.Reactive.Linq;
 using System.Timers;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NCrontab;
 using NitroxDiscordBot.Configuration;
+using NitroxDiscordBot.Core;
 using Timer = System.Timers.Timer;
 
 namespace NitroxDiscordBot.Services;

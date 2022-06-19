@@ -1,38 +1,37 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using NitroxDiscordBot.Configuration;
-using NitroxDiscordBot.Services;
 
-namespace NitroxDiscordBot;
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-public static class Program
+// Add configuration providers
+builder.Configuration.AddJsonFile("appsettings.json", true, true);
+if (builder.Environment.IsDevelopment())
 {
-    public static async Task Main(string[] args)
-    {
-        IHostBuilder hostBuilder = Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((context, builder) => builder
-                .SetBasePath(EnvironmentUtils.ExecutableDirectory)
-                .AddJsonFile("appsettings.json", true, true)
-                .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", true, true)
-                .AddCommandLine(args))
-            .ConfigureLogging(loggers => loggers.ClearProviders().AddConsole())
-            .ConfigureServices((context, services) =>
-            {
-                // Configuration
-                IConfiguration config = context.Configuration;
-                services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations();
-                services.AddOptions<ChannelCleanupConfig>().Bind(config).ValidateDataAnnotations();
-                services.AddOptions<MotdConfig>().Bind(config).ValidateDataAnnotations();
-
-                // Services
-                services.AddSingleton<NitroxBotService>().AddHostedService(provider => provider.GetRequiredService<NitroxBotService>());
-                services.AddHostedService<ChannelCleanupService>();
-                services.AddHostedService<MotdService>();
-            });
-        await hostBuilder
-            .Build()
-            .RunAsync();
-    }
+    builder.Configuration.AddJsonFile("appsettings.Development.json", true, true);
 }
+
+// Add services to the container.
+builder.Services.AddRazorPages();
+builder.Services.AddServerSideBlazor();
+builder.Services.AddOptions<NitroxBotConfig>().Bind(builder.Configuration).ValidateDataAnnotations();
+builder.Services.AddOptions<ChannelCleanupConfig>().Bind(builder.Configuration).ValidateDataAnnotations();
+builder.Services.AddOptions<MotdConfig>().Bind(builder.Configuration).ValidateDataAnnotations();
+// builder.Services.AddSingleton<NitroxBotService>().AddHostedService(provider => provider.GetRequiredService<NitroxBotService>());
+// builder.Services.AddHostedService<ChannelCleanupService>();
+// builder.Services.AddHostedService<MotdService>();
+
+WebApplication app = builder.Build();
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+app.MapBlazorHub();
+app.MapFallbackToPage("/_Host");
+
+app.Run();
