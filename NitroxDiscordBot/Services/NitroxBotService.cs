@@ -57,7 +57,7 @@ public class NitroxBotService : IHostedService, IDisposable
                 continue;
             }
 
-            foreach (IMessage message in buffer)
+            foreach (IMessage message in buffer.Reverse())
             {
                 if (message.Timestamp + age < now)
                 {
