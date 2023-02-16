@@ -44,20 +44,16 @@ public class ChannelCleanupService : BaseDiscordBotService, IDisposable
     private void OptionsChanged(ChannelCleanupConfig obj)
     {
         schedules.Clear();
-        var tasks = obj.CleanupTasks ?? ArraySegment<ChannelCleanupConfig.ChannelCleanup>.Empty;
 
-        var taskCount = tasks.Count();
+        var taskCount = CleanupTasks.Count();
         var turnedOff = taskCount < 1;
         if (turnedOff)
         {
             log.LogInformation("Cleanup service disabled");
         }
 
-        log.LogInformation("Found {Count} cleanup tasks", taskCount);
-        foreach (ChannelCleanupConfig.ChannelCleanup task in tasks)
-        {
-            log.LogInformation(task.ToString());
-        }
+        var cleanupTaskSummary = string.Join(Environment.NewLine, CleanupTasks.Select(t => t.ToString()));
+        log.LogInformation("Found {Count} cleanup tasks:{NewLine}{CleanupTasks}", taskCount, Environment.NewLine, cleanupTaskSummary);
     }
 
     public override Task StartAsync(CancellationToken cancellationToken)
@@ -98,7 +94,7 @@ public class ChannelCleanupService : BaseDiscordBotService, IDisposable
     }
 
     /// <summary>
-    ///     Emits <see cref="ChannelCleanupConfig.ChannelCleanup">work</see> to the <see cref="workQueue">queue</see> based on the <see cref="schedules"/>.
+    ///     Emits <see cref="ChannelCleanupConfig.ChannelCleanup">work</see> to the <see cref="workQueue">queue</see> based on the <see cref="schedules" />.
     /// </summary>
     private async Task RunSchedulerAsync(CancellationToken cancellationToken)
     {
@@ -113,8 +109,7 @@ public class ChannelCleanupService : BaseDiscordBotService, IDisposable
             await timer.WaitForNextTickAsync(cancellationToken);
 
             // Check if schedule indicates that task should run now, keep track if task already ran.
-            IEnumerable<ChannelCleanupConfig.ChannelCleanup> cleanupTasks = options.CurrentValue.CleanupTasks ?? ArraySegment<ChannelCleanupConfig.ChannelCleanup>.Empty;
-            foreach (ChannelCleanupConfig.ChannelCleanup task in cleanupTasks)
+            foreach (ChannelCleanupConfig.ChannelCleanup task in CleanupTasks)
             {
                 if (serviceCancellationSource?.IsCancellationRequested == true)
                 {
@@ -136,6 +131,11 @@ public class ChannelCleanupService : BaseDiscordBotService, IDisposable
         }
         log.LogDebug("Scheduler stopped");
     }
+
+    /// <summary>
+    ///     Gets the cleanup tasks as provided by configuration.
+    /// </summary>
+    public IEnumerable<ChannelCleanupConfig.ChannelCleanup> CleanupTasks => options.CurrentValue.CleanupTasks ?? ArraySegment<ChannelCleanupConfig.ChannelCleanup>.Empty;
 
     public override Task StopAsync(CancellationToken cancellationToken)
     {
