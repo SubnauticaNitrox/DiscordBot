@@ -7,13 +7,13 @@ namespace NitroxDiscordBot.Configuration;
 /// </summary>
 public class MotdConfig
 {
-    public IEnumerable<ChannelMotd>? ChannelMotds { get; set; }
+    public IEnumerable<ChannelMotd> ChannelMotds { get; set; }
 
     public class ChannelMotd
     {
         [Required] public ulong ChannelId { get; set; }
 
-        public IEnumerable<MotdMessage>? Messages { get; set; }
+        public IEnumerable<MotdMessage> Messages { get; set; }
     }
 
     public record MotdMessage
@@ -33,6 +33,6 @@ public class MotdConfig
         public string FooterIconUrl { get; set; } = "";
         public string ThumbnailUrl { get; set; } = "";
         public string Color { get; set; } = "#00FFFF";
-        public IEnumerable<Field>? Fields { get; set; }
+        public IEnumerable<Field> Fields { get; set; }
     }
 }

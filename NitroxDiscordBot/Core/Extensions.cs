@@ -6,9 +6,9 @@ namespace NitroxDiscordBot.Core;
 
 public static class Extensions
 {
-    public static IObservable<T> CreateObservable<T>(this IOptionsMonitor<T> options) where T : class
+    public static IObservable<T> AsObservable<T>(this IOptionsMonitor<T> options) where T : class
     {
-        return Observable.Create<T>(observer => options.OnChange(observer.OnNext));
+        return Observable.Create<T>(observer => options.OnChange(observer.OnNext)!);
     }
 
     public static uint HexToUint(this string hex)

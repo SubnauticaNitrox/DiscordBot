@@ -2,11 +2,14 @@
 
     <PropertyGroup>
         <TargetFramework>net7.0</TargetFramework>
-        <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <Company>Nitrox Team</Company>
         <Product>Nitrox Discord Bot</Product>
         <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    </PropertyGroup>
+    
+    <!-- Application cannot be debugged as self-contained -->
+    <PropertyGroup Condition="'$(Configuration)' != 'Debug'">
         <SelfContained>true</SelfContained>
         <PublishSingleFile>true</PublishSingleFile>
         <PublishReadyToRun>true</PublishReadyToRun>

@@ -11,7 +11,7 @@ namespace NitroxDiscordBot.Core;
 public class DiscordAuthenticationStateProvider : AuthenticationStateProvider
 {
     public ProtectedLocalStorage Store { get; }
-    public static readonly AuthenticationState DefaultAuthState = new(new ClaimsPrincipal(new ClaimsIdentity((IIdentity?)null)));
+    public static readonly AuthenticationState DefaultAuthState = new(new ClaimsPrincipal(new ClaimsIdentity((IIdentity)null)));
     public const string AuthenticationScheme = "Discord authentication type";
 
     public DiscordAuthenticationStateProvider(ProtectedLocalStorage store)
@@ -45,12 +45,12 @@ public class DiscordAuthenticationStateProvider : AuthenticationStateProvider
     {
         return CreatePrincipal((ulong)Random.Shared.NextInt64(), name, role);
     }
-    
+
     public static ClaimsPrincipal CreatePrincipal(ulong userId, string name, string role = "moderator")
     {
         return CreatePrincipal(userId.ToString(), name, role);
     }
-    
+
     public static ClaimsPrincipal CreatePrincipal(string userId, string name, string role)
     {
         Claim[] claims =

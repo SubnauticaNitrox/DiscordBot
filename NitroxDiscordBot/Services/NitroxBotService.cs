@@ -41,7 +41,7 @@ public class NitroxBotService : IHostedService, IDisposable
 
     public async Task DeleteOldMessagesAsync(ulong channelId, TimeSpan age, CancellationToken cancellationToken)
     {
-        IMessageChannel? channel = await GetChannel<IMessageChannel>(channelId);
+        IMessageChannel channel = await GetChannel<IMessageChannel>(channelId);
         if (channel == null)
         {
             return;
@@ -49,7 +49,7 @@ public class NitroxBotService : IHostedService, IDisposable
 
         var count = 0;
         log.LogInformation("Running old messages cleanup on channel '{ChannelName}'", channel.Name);
-        await foreach (IReadOnlyCollection<IMessage>? buffer in channel.GetMessagesAsync(EarliestSnowflakeId, Direction.After).WithCancellation(cancellationToken))
+        await foreach (IReadOnlyCollection<IMessage> buffer in channel.GetMessagesAsync(EarliestSnowflakeId, Direction.After).WithCancellation(cancellationToken))
         {
             if (buffer == null || buffer.Count < 1)
             {
@@ -119,7 +119,7 @@ public class NitroxBotService : IHostedService, IDisposable
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
-        IMessageChannel? channel = await GetChannel<IMessageChannel>(channelId);
+        IMessageChannel channel = await GetChannel<IMessageChannel>(channelId);
         if (channel == null)
         {
             return;
@@ -158,9 +158,9 @@ public class NitroxBotService : IHostedService, IDisposable
         return messages.ToArray();
     }
 
-    private async Task<T?> GetChannel<T>(ulong channelId) where T : class, IChannel
+    private async Task<T> GetChannel<T>(ulong channelId) where T : class, IChannel
     {
-        T? channel = await client.GetChannelAsync(channelId) as T;
+        T channel = await client.GetChannelAsync(channelId) as T;
         if (channel == null)
         {
             log.LogWarning("Couldn't find channel of type {ChannelType} with id {ChannelId}", typeof(T).Name, channelId);

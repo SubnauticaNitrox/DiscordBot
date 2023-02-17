@@ -6,10 +6,10 @@
 
 @code {
     [CascadingParameter]
-    protected Task<AuthenticationState>? AuthenticationStateTask { get; private set; }
-    protected IIdentity? UserIdentity { get; private set; }
+    protected Task<AuthenticationState> AuthenticationStateTask { get; private set; }
+    protected IIdentity UserIdentity { get; private set; }
     protected bool IsAuthenticated => UserIdentity?.IsAuthenticated == true;
-    
+
     protected override async Task OnInitializedAsync()
     {
         UserIdentity = (await AuthenticationStateTask!).User.Identity;

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using NitroxDiscordBot.Configuration;
 using NitroxDiscordBot.Services;
 
@@ -22,8 +23,7 @@ services.AddServerSideBlazor();
 services.AddLogging(opt => opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff "));
 // TODO Discord integration: services.AddScoped<AuthenticationStateProvider, DiscordAuthenticationStateProvider>();
 services.AddSingleton<NitroxBotService>().AddHostedService(provider => provider.GetRequiredService<NitroxBotService>());
-services.AddHostedService<ChannelCleanupService>();
-// services.AddHostedService<MotdService>();
+services.AddSingleton<ChannelCleanupService>().AddHostedService(provider => provider.GetRequiredService<ChannelCleanupService>());
 
 // Configure the HTTP request pipeline.
 WebApplication app = builder.Build();
