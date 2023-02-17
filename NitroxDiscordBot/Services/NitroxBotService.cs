@@ -48,25 +48,60 @@ public class NitroxBotService : IHostedService, IDisposable
         }
 
         var count = 0;
-        DateTimeOffset now = DateTimeOffset.UtcNow;
         log.LogInformation("Running old messages cleanup on channel '{ChannelName}'", channel.Name);
         await foreach (IReadOnlyCollection<IMessage>? buffer in channel.GetMessagesAsync(EarliestSnowflakeId, Direction.After).WithCancellation(cancellationToken))
         {
-            if (buffer == null)
+            if (buffer == null || buffer.Count < 1)
             {
                 continue;
             }
+            // Messages from API seem to be in reverse chronological order. But in case the API changes, let's order it ourselves again.
+            IMessage[] chronologicalMessages = buffer.Reverse().OrderBy(m => m.Timestamp).ToArray();
 
-            foreach (IMessage message in buffer.Reverse())
+            if (channel is ITextChannel textChannel)
             {
-                if (message.Timestamp + age < now)
+                // Channel supports bulk delete, do this instead.
+                IMessage[] messagesToBulkDelete = chronologicalMessages.TakeWhile(m => m.Timestamp + age < DateTimeOffset.UtcNow).ToArray();
+                if (messagesToBulkDelete.Length > 0)
                 {
-                    log.LogInformation("Deleting message: '{MessageContent}' with timestamp: {MessageTimestamp}", message.Content, message.Timestamp);
-                    await message.DeleteAsync();
-                    count++;
+                    var messagesSummary = string.Join(Environment.NewLine, messagesToBulkDelete.Select(m => $@"{m.Timestamp}:{Environment.NewLine}{m.Content.Replace("\n", "\t" + Environment.NewLine)}"));
+                    log.LogInformation("Deleting messages:{NewLine}{MessagesContent}", Environment.NewLine, messagesSummary);
+                    await textChannel.DeleteMessagesAsync(messagesToBulkDelete);
+                    count += messagesToBulkDelete.Length;
+
+                    // Exit early instead of iterating all messages in channel.
+                    bool bufferContainedMessageThatDoesNotNeedDeletion = messagesToBulkDelete.Length != chronologicalMessages.Length;
+                    if (bufferContainedMessageThatDoesNotNeedDeletion)
+                    {
+                        goto chronologicallyDone;
+                    }
+                }
+            }
+            else
+            {
+                // Channel does not support bulk delete, remove one-by-one. Slow: Discord rate limits are easy to hit.
+                foreach (IMessage message in chronologicalMessages)
+                {
+                    if (message.Timestamp + age < DateTimeOffset.UtcNow)
+                    {
+                        log.LogInformation("Deleting message: '{MessageContent}' with timestamp: {MessageTimestamp}", message.Content, message.Timestamp);
+                        await message.DeleteAsync();
+                        count++;
+                    }
+                    else
+                    {
+                        // Exit early instead of iterating all messages in channel.
+                        goto chronologicallyDone;
+                    }
+
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
                 }
             }
         }
+        chronologicallyDone:
 
         if (count > 0)
         {
@@ -100,7 +135,8 @@ public class NitroxBotService : IHostedService, IDisposable
         // If author of current message is different then we can't edit it.
         if (messages[index].Author.Id != client.CurrentUser?.Id)
         {
-            log.LogError("Unable to modify message at index {Index} because it is authored by another user: '{AuthorUsername}' ({AuthorId})", index, messages[index].Author.Username, messages[index].Author.Id);
+            log.LogError("Unable to modify message at index {Index} because it is authored by another user: '{AuthorUsername}' ({AuthorId})", index,
+                messages[index].Author.Username, messages[index].Author.Id);
             return;
         }
 
