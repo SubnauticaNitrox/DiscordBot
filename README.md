@@ -9,15 +9,21 @@ Discord bot used by Nitrox team.
 https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permissions=17179943952&scope=bot
 4. Run this application
 
+## Deploy (example for Raspberry Pi 32-bit)
+
+1. Run: `dotnet publish -r linux-arm -c Release`
+2. Run: `scp -r pathToPublishFolder/* raspberryPiSshName:~/someFolderInUserHome/`
+3. Check if appsettings.json is correctly configured.
+4. Run the program: `nohup ./NitroxDiscordBot > dotnetcore.log &`
+
 ## Features
- - Specifiying messages for MOTD channels
  - Purging channels of "old" messages
 
 ## Example appsettings.json file
 ```json
 {
     "Token": "DISCORD_TOKEN_HERE",
-    "CleanupTasks": [
+    "CleanupDefinitions": [
         {
             "ChannelId": 598546552918900774,
             "MaxAge": "1.0:0",
