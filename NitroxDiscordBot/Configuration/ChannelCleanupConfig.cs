@@ -1,4 +1,5 @@
-﻿using Hangfire;
+﻿
+using Cronos;
 
 namespace NitroxDiscordBot.Configuration;
 
@@ -12,8 +13,8 @@ public class ChannelCleanupConfig
         public TimeSpan MaxAge { get; init; }
 
         /// <summary>
-        ///     Cron formatted schedule.
+        ///     Cron formatted schedule. Default to hourly.
         /// </summary>
-        public string Schedule { get; init; } = Cron.Hourly();
+        public string Schedule { get; init; } = CronExpression.Parse("0 * * * *").ToString();
     }
 }

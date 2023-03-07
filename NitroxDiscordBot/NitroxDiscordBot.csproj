@@ -17,9 +17,8 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Cronos" Version="0.7.1" />
         <PackageReference Include="Discord.Net" Version="3.9.0" />
-        <PackageReference Include="Hangfire" Version="1.7.30" />
-        <PackageReference Include="NCrontab" Version="3.3.1" />
         <PackageReference Include="System.Reactive" Version="5.0.0" />
     </ItemGroup>
 

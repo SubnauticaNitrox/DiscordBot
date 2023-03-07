@@ -1,8 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using System.Reactive.Linq;
 using System.Threading.Channels;
+using Cronos;
 using Microsoft.Extensions.Options;
-using NCrontab;
 using NitroxDiscordBot.Configuration;
 using NitroxDiscordBot.Core;
 
@@ -81,7 +81,7 @@ public class ChannelCleanupService : DiscordBotService
     {
         static DateTime GenerateNextOccurrence(ChannelCleanupConfig.ChannelCleanup definition)
         {
-            return CrontabSchedule.Parse(definition.Schedule).GetNextOccurrence(DateTime.UtcNow);
+            return CronExpression.Parse(definition.Schedule).GetNextOccurrence(DateTime.UtcNow) ?? throw new Exception($"Cron expression '{definition.Schedule}' does not have an occurrence after {DateTime.UtcNow}; the service will stop.");
         }
 
         static DateTime AddOrUpdateScheduleForCleanupDefinition(
