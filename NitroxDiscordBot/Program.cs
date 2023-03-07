@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
 using NitroxDiscordBot.Configuration;
 using NitroxDiscordBot.Services;
 
@@ -12,9 +11,9 @@ if (builder.Environment.IsDevelopment())
 {
     config.AddJsonFile("appsettings.Development.json", true, true);
 }
-services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations();
-services.AddOptions<ChannelCleanupConfig>().Bind(config).ValidateDataAnnotations();
-services.AddOptions<MotdConfig>().Bind(config).ValidateDataAnnotations();
+services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
+services.AddOptions<ChannelCleanupConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
+services.AddOptions<MotdConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
 
 // Standard services for blazer server SPA
 services.AddRazorPages();
