@@ -15,8 +15,10 @@ public abstract class DiscordBotService : IHostedService, IDisposable
 
     protected DiscordBotService(NitroxBotService bot, ILogger log)
     {
-        Bot = bot ?? throw new ArgumentNullException(nameof(bot));
-        Log = log ?? throw new ArgumentNullException(nameof(log));
+        ArgumentNullException.ThrowIfNull(bot);
+        ArgumentNullException.ThrowIfNull(log);
+        Bot = bot;
+        Log = log;
     }
 
     async Task IHostedService.StartAsync(CancellationToken cancellationToken)
