@@ -39,8 +39,15 @@ public class NitroxBotService : IHostedService, IDisposable
         await client.StopAsync();
     }
 
-    public async Task DeleteOldMessagesAsync(ulong channelId, TimeSpan age, CancellationToken cancellationToken)
+    public async Task DeleteOldMessagesAsync(ulong channelId, TimeSpan ageThreshold, CancellationToken cancellationToken)
     {
+        static bool IsSuitableForBulkDelete(DateTimeOffset timestamp, TimeSpan ageThreshold)
+        {
+            TimeSpan differenceFromNow = DateTimeOffset.UtcNow - timestamp;
+            // Note: messages older than 2 weeks can't be bulk-deleted.
+            return differenceFromNow >= ageThreshold && differenceFromNow.TotalDays <= 13;
+        }
+
         IMessageChannel channel = await GetChannel<IMessageChannel>(channelId);
         if (channel == null)
         {
@@ -58,10 +65,10 @@ public class NitroxBotService : IHostedService, IDisposable
             // Messages from API seem to be in reverse chronological order. But in case the API changes, let's order it ourselves again.
             IMessage[] chronologicalMessages = buffer.Reverse().OrderBy(m => m.Timestamp).ToArray();
 
+            // 1. If channel supports bulk delete, do this first.
             if (channel is ITextChannel textChannel)
             {
-                // Channel supports bulk delete, do this instead.
-                IMessage[] messagesToBulkDelete = chronologicalMessages.TakeWhile(m => m.Timestamp + age < DateTimeOffset.UtcNow).ToArray();
+                IMessage[] messagesToBulkDelete = chronologicalMessages.TakeWhile(m => IsSuitableForBulkDelete(m.Timestamp, ageThreshold)).ToArray();
                 if (messagesToBulkDelete.Length > 0)
                 {
                     var messagesSummary = string.Join(Environment.NewLine, messagesToBulkDelete.Select(m => $@"{m.Timestamp}:{Environment.NewLine}{m.Content.Replace("\n", "\t" + Environment.NewLine)}"));
@@ -69,35 +76,28 @@ public class NitroxBotService : IHostedService, IDisposable
                     await textChannel.DeleteMessagesAsync(messagesToBulkDelete);
                     count += messagesToBulkDelete.Length;
 
-                    // Exit early instead of iterating all messages in channel.
-                    bool bufferContainedMessageThatDoesNotNeedDeletion = messagesToBulkDelete.Length != chronologicalMessages.Length;
-                    if (bufferContainedMessageThatDoesNotNeedDeletion)
-                    {
-                        goto chronologicallyDone;
-                    }
+                    // Remove the already deleted messages for step 2.
+                    chronologicalMessages = chronologicalMessages.Except(messagesToBulkDelete).ToArray();
                 }
             }
-            else
+            // 2. Remove remaining messages one-by-one (e.g. when channel does not support it or message(s) are older than 2 weeks).
+            foreach (IMessage message in chronologicalMessages)
             {
-                // Channel does not support bulk delete, remove one-by-one. Slow: Discord rate limits are easy to hit.
-                foreach (IMessage message in chronologicalMessages)
+                if (message.Timestamp + ageThreshold < DateTimeOffset.UtcNow)
                 {
-                    if (message.Timestamp + age < DateTimeOffset.UtcNow)
-                    {
-                        log.LogInformation("Deleting message: '{MessageContent}' with timestamp: {MessageTimestamp}", message.Content, message.Timestamp);
-                        await message.DeleteAsync();
-                        count++;
-                    }
-                    else
-                    {
-                        // Exit early instead of iterating all messages in channel.
-                        goto chronologicallyDone;
-                    }
+                    log.LogInformation("Deleting message: '{MessageContent}' with timestamp: {MessageTimestamp}", message.Content, message.Timestamp);
+                    await message.DeleteAsync();
+                    count++;
+                }
+                else
+                {
+                    // Exit early instead of iterating all messages in channel.
+                    goto chronologicallyDone;
+                }
 
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        break;
-                    }
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
                 }
             }
         }
@@ -105,7 +105,7 @@ public class NitroxBotService : IHostedService, IDisposable
 
         if (count > 0)
         {
-            log.LogInformation("Deleted {Count} message(s) older than {Age} from channel '{ChannelName}'", count, age, channel.Name);
+            log.LogInformation("Deleted {Count} message(s) older than {Age} from channel '{ChannelName}'", count, ageThreshold, channel.Name);
         }
         else
         {
