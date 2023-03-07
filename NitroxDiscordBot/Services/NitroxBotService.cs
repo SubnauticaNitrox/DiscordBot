@@ -170,21 +170,18 @@ public class NitroxBotService : IHostedService, IDisposable
 
     public async Task WaitForReadyAsync(CancellationToken cancellationToken)
     {
-        await Task.Run(async () =>
+        var enteredLoop = false;
+        while (!cancellationToken.IsCancellationRequested && !IsConnected)
         {
-            var enteredLoop = false;
-            while (!cancellationToken.IsCancellationRequested && !IsConnected)
-            {
-                enteredLoop = true;
-                await Task.Delay(100, cancellationToken);
-            }
+            enteredLoop = true;
+            await Task.Delay(100, cancellationToken);
+        }
 
-            // Wait some extra time before trying to use API
-            if (enteredLoop && IsConnected)
-            {
-                await Task.Delay(1000, cancellationToken);
-            }
-        }, cancellationToken);
+        // Wait some extra time before trying to use API
+        if (enteredLoop && IsConnected)
+        {
+            await Task.Delay(1000, cancellationToken);
+        }
     }
 
     public bool IsConnected => client.ConnectionState == ConnectionState.Connected;
