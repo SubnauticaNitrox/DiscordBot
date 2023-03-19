@@ -16,4 +16,7 @@ public static class Extensions
         uint.TryParse(hex.AsSpan().TrimStart('#'), NumberStyles.HexNumber, null, out var number);
         return number;
     }
+
+    public static void AddHostedSingleton<TService>(this IServiceCollection services) where TService : class, IHostedService =>
+        services.AddSingleton<TService>().AddHostedService(provider => provider.GetRequiredService<TService>());
 }

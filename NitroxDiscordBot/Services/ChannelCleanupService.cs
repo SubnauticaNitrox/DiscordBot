@@ -11,7 +11,7 @@ namespace NitroxDiscordBot.Services;
 /// <summary>
 ///     Cleans up "old" messages from Discord channels.
 /// </summary>
-public class ChannelCleanupService : DiscordBotService
+public class ChannelCleanupService : DiscordBotHostedService
 {
     /// <summary>
     ///     Gets a list of cleanup tasks mapped to a cleanup definition in the config file. Each config entry should have only 1 (future) cleanup task.

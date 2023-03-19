@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.Options;
 using NitroxDiscordBot.Configuration;
@@ -13,6 +14,7 @@ public class NitroxBotService : IHostedService, IDisposable
     private readonly ILogger log;
     private readonly DiscordSocketClient client;
     private readonly IOptionsMonitor<NitroxBotConfig> config;
+    public event EventHandler<SocketMessage> MessageReceived;
 
     /// <summary>
     ///     Used as anchor point for fetching early messages from a Discord channel.
@@ -23,8 +25,18 @@ public class NitroxBotService : IHostedService, IDisposable
     {
         this.config = config;
         this.log = log;
-        client = new DiscordSocketClient();
+        client = new DiscordSocketClient(new DiscordSocketConfig()
+        {
+            GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent
+        });
         client.Log += ClientLogReceived;
+        client.MessageReceived += BotOnMessageReceived;
+    }
+
+    private Task BotOnMessageReceived(SocketMessage arg)
+    {
+        OnMessageReceived(arg);
+        return Task.CompletedTask;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -185,6 +197,7 @@ public class NitroxBotService : IHostedService, IDisposable
     }
 
     public bool IsConnected => client.ConnectionState == ConnectionState.Connected;
+    public IUser UserOfBot => client.CurrentUser;
 
     /// <summary>
     ///     Handler that receives log messages from the Discord client API.
@@ -207,5 +220,15 @@ public class NitroxBotService : IHostedService, IDisposable
     {
         client.Log -= ClientLogReceived;
         client.Dispose();
+    }
+
+    protected virtual void OnMessageReceived(SocketMessage e)
+    {
+        MessageReceived?.Invoke(this, e);
+    }
+
+    public ICommandContext CreateCommandContext(SocketUserMessage message)
+    {
+        return new SocketCommandContext(client, message);
     }
 }
