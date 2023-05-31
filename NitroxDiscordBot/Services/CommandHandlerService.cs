@@ -37,7 +37,7 @@ public class CommandHandlerService : DiscordBotHostedService
             return;
         }
         int argumentPos = 0;
-        if (!message.HasCharPrefix('?', ref argumentPos) || message.HasMentionPrefix(Bot.UserOfBot, ref argumentPos) || message.Author.IsBot)
+        if (!message.HasCharPrefix('?', ref argumentPos) || message.HasMentionPrefix(Bot.User, ref argumentPos) || message.Author.IsBot)
         {
             return;
         }
@@ -47,7 +47,7 @@ public class CommandHandlerService : DiscordBotHostedService
             {
                 if (task.IsFaulted)
                 {
-                    Log.LogError(task.Exception, "Error while handling command \'{MessageCleanContent}\' by user: \'{MessageAuthor}\'", message.CleanContent, message.Author);
+                    Log.LogError(task.Exception, "Error while handling command \'{MessageContent}\' by user: \'{MessageAuthor}\'", message.CleanContent, message.Author);
                 }
             });
     }

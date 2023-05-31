@@ -100,7 +100,7 @@ public class ChannelCleanupService : DiscordBotHostedService
             }
             catch (OperationCanceledException)
             {
-                // ignored
+                break;
             }
 
             // Check if cleanup definitions indicates that task should run now, keeping track if task already ran.
@@ -136,7 +136,27 @@ public class ChannelCleanupService : DiscordBotHostedService
         {
             await foreach (ChannelCleanupConfig.ChannelCleanup cleanup in workQueue.Reader.ReadAllAsync(cancellationToken).WithCancellation(cancellationToken))
             {
-                await Bot.DeleteOldMessagesAsync(cleanup.ChannelId, cleanup.MaxAge, cancellationToken);
+                int retries = 3;
+                while (retries > 0 && !cancellationToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        await Bot.DeleteOldMessagesAsync(cleanup.ChannelId, cleanup.MaxAge, cancellationToken);
+                        break;
+                    }
+                    catch (Exception)
+                    {
+                        retries--;
+                        try
+                        {
+                            await Task.Delay(100, cancellationToken);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                    }
+                }
             }
         }
         catch (OperationCanceledException)

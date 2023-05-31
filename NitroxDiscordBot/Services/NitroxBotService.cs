@@ -25,7 +25,7 @@ public class NitroxBotService : IHostedService, IDisposable
     {
         this.config = config;
         this.log = log;
-        client = new DiscordSocketClient(new DiscordSocketConfig()
+        client = new DiscordSocketClient(new DiscordSocketConfig
         {
             GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent
         });
@@ -83,7 +83,8 @@ public class NitroxBotService : IHostedService, IDisposable
                 IMessage[] messagesToBulkDelete = chronologicalMessages.TakeWhile(m => IsSuitableForBulkDelete(m.Timestamp, ageThreshold)).ToArray();
                 if (messagesToBulkDelete.Length > 0)
                 {
-                    var messagesSummary = string.Join(Environment.NewLine, messagesToBulkDelete.Select(m => $@"{m.Timestamp}:{Environment.NewLine}{m.Content.Replace("\n", "\t" + Environment.NewLine)}"));
+                    var messagesSummary = string.Join(Environment.NewLine,
+                        messagesToBulkDelete.Select(m => $@"{m.Timestamp}:{Environment.NewLine}{m.Content.Replace("\n", "\t" + Environment.NewLine)}"));
                     log.LogInformation("Deleting messages:{NewLine}{MessagesContent}", Environment.NewLine, messagesSummary);
                     await textChannel.DeleteMessagesAsync(messagesToBulkDelete);
                     count += messagesToBulkDelete.Length;
@@ -197,7 +198,11 @@ public class NitroxBotService : IHostedService, IDisposable
     }
 
     public bool IsConnected => client.ConnectionState == ConnectionState.Connected;
-    public IUser UserOfBot => client.CurrentUser;
+
+    /// <summary>
+    ///     The "user" account that is controlled by this bot.
+    /// </summary>
+    public IUser User => client.CurrentUser;
 
     /// <summary>
     ///     Handler that receives log messages from the Discord client API.

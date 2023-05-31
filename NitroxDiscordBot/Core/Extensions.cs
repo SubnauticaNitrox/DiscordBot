@@ -11,7 +11,7 @@ public static class Extensions
         return Observable.Create<T>(observer => options.OnChange(observer.OnNext)!);
     }
 
-    public static uint HexToUint(this string hex)
+    public static uint ParseHexToUint(this string hex)
     {
         uint.TryParse(hex.AsSpan().TrimStart('#'), NumberStyles.HexNumber, null, out var number);
         return number;
