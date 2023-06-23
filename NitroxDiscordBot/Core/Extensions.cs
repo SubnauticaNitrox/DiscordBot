@@ -19,4 +19,7 @@ public static class Extensions
 
     public static void AddHostedSingleton<TService>(this IServiceCollection services) where TService : class, IHostedService =>
         services.AddSingleton<TService>().AddHostedService(provider => provider.GetRequiredService<TService>());
+
+    public static bool IsBusy<T>(this Task<T> task) => task is { IsCompleted: false };
+    public static bool IsBusy(this Task task) => task is { IsCompleted: false };
 }

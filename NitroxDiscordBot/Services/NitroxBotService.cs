@@ -66,7 +66,7 @@ public class NitroxBotService : IHostedService, IDisposable
             return;
         }
 
-        var count = 0;
+        int count = 0;
         log.LogInformation("Running old messages cleanup on channel '{ChannelName}'", channel.Name);
         await foreach (IReadOnlyCollection<IMessage> buffer in channel.GetMessagesAsync(EarliestSnowflakeId, Direction.After).WithCancellation(cancellationToken))
         {
@@ -83,7 +83,7 @@ public class NitroxBotService : IHostedService, IDisposable
                 IMessage[] messagesToBulkDelete = chronologicalMessages.TakeWhile(m => IsSuitableForBulkDelete(m.Timestamp, ageThreshold)).ToArray();
                 if (messagesToBulkDelete.Length > 0)
                 {
-                    var messagesSummary = string.Join(Environment.NewLine,
+                    string messagesSummary = string.Join(Environment.NewLine,
                         messagesToBulkDelete.Select(m => $@"{m.Timestamp}:{Environment.NewLine}{m.Content.Replace("\n", "\t" + Environment.NewLine)}"));
                     log.LogInformation("Deleting messages:{NewLine}{MessagesContent}", Environment.NewLine, messagesSummary);
                     await textChannel.DeleteMessagesAsync(messagesToBulkDelete);
@@ -183,7 +183,7 @@ public class NitroxBotService : IHostedService, IDisposable
 
     public async Task WaitForReadyAsync(CancellationToken cancellationToken)
     {
-        var enteredLoop = false;
+        bool enteredLoop = false;
         while (!cancellationToken.IsCancellationRequested && !IsConnected)
         {
             enteredLoop = true;

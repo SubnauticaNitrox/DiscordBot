@@ -29,22 +29,6 @@ https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permission
             "MaxAge": "1.0:0",
             "Schedule": "* * * * *"
         }
-    ],
-    "ChannelMotds": [
-        {
-            "ChannelId": 970914315307724850,
-            "Messages": [
-                {
-                    "Title": "Name of author",
-                    "Fields": [
-                        {
-                            "Name": "My field title",
-                            "Content": "My field message"
-                        }
-                    ]
-                },
-            ]
-        }
     ]
 }
 ```

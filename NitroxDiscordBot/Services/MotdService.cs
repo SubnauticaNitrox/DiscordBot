@@ -49,7 +49,7 @@ public class MotdService : DiscordBotHostedService
                     continue;
                 }
 
-                var index = 0;
+                int index = 0;
                 foreach (MotdConfig.MotdMessage message in motd.Messages)
                 {
                     EmbedBuilder embed = new EmbedBuilder()
