@@ -63,8 +63,8 @@ public class ChannelCleanupService : DiscordBotHostedService
         workQueue = workQueue == null || workQueue.Reader.Completion.IsCompleted ? Channel.CreateBounded<ChannelCleanupConfig.ChannelCleanup>(20) : workQueue;
         CancellationToken workCancelToken = serviceCancellation.Token;
         RegisterDisposable(workCancelToken.Register(() => workQueue.Writer.Complete()), true);
-        producerTask = Task.Run(() => RunCleanupProducer(workCancelToken), cancellationToken);
-        consumerTask = Task.Run(() => RunCleanupConsumer(workCancelToken), cancellationToken);
+        producerTask = Task.Run(() => RunCleanupProducerAsync(workCancelToken), cancellationToken);
+        consumerTask = Task.Run(() => RunCleanupConsumerAsync(workCancelToken), cancellationToken);
 
         return Task.CompletedTask;
     }
@@ -79,7 +79,7 @@ public class ChannelCleanupService : DiscordBotHostedService
     ///     Emits <see cref="ChannelCleanupConfig.ChannelCleanup">work</see> to the <see cref="workQueue">queue</see> based on the <see cref="scheduledTasks" />.
     /// </summary>
     /// <param name="cancellationToken"></param>
-    private async Task RunCleanupProducer(CancellationToken cancellationToken)
+    private async Task RunCleanupProducerAsync(CancellationToken cancellationToken)
     {
         static DateTime GenerateNextOccurrence(ChannelCleanupConfig.ChannelCleanup definition)
         {
@@ -127,13 +127,13 @@ public class ChannelCleanupService : DiscordBotHostedService
             }
         }
 
-        Log.LogInformation("Work producer stopped");
+        Log.LogDebug("Work producer stopped");
     }
 
     /// <summary>
     ///     Processes the <see cref="workQueue">queued</see> cleanup work.
     /// </summary>
-    private async Task RunCleanupConsumer(CancellationToken cancellationToken = default)
+    private async Task RunCleanupConsumerAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -147,8 +147,9 @@ public class ChannelCleanupService : DiscordBotHostedService
                         await Bot.DeleteOldMessagesAsync(cleanup.ChannelId, cleanup.MaxAge, cancellationToken);
                         break;
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        Log.LogDebug(ex, "Discord API returned an error while trying to delete old messages");
                         retries--;
                         try
                         {
@@ -167,7 +168,7 @@ public class ChannelCleanupService : DiscordBotHostedService
             // ignored
         }
 
-        Log.LogInformation("Work consumer stopped");
+        Log.LogDebug("Work consumer stopped");
     }
 
     /// <summary>
@@ -175,6 +176,4 @@ public class ChannelCleanupService : DiscordBotHostedService
     /// </summary>
     public IEnumerable<ChannelCleanupConfig.ChannelCleanup> CleanupDefinitions =>
         options.CurrentValue.CleanupDefinitions ?? ArraySegment<ChannelCleanupConfig.ChannelCleanup>.Empty;
-
-    public bool IsStoppedWithoutRequested => serviceCancellation is { IsCancellationRequested: false } && (!producerTask.IsBusy() || !consumerTask.IsBusy());
 }

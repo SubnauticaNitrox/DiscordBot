@@ -1,4 +1,6 @@
 **/.idea/**
+**/*.Development.*
+**/*.Production.*
 
 # User specific
 *.suo
