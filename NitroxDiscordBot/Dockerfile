@@ -1,10 +1,10 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
+﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
 # TODO: No ports as this discord bot does not yet have a frontend to connect to.
 #EXPOSE 80
 #EXPOSE 443
 
-FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY ["NitroxDiscordBot/NitroxDiscordBot.csproj", "NitroxDiscordBot/"]
 RUN dotnet restore "NitroxDiscordBot/NitroxDiscordBot.csproj"

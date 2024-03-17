@@ -145,7 +145,7 @@ public class NitroxBotService : IHostedService, IDisposable
             await channel.SendMessageAsync(null, false, embed);
             return;
         }
-        // If author of current message is different then we can't edit it.
+        // If author of current message is different, we can't edit it.
         if (messages[index].Author.Id != client.CurrentUser?.Id)
         {
             log.LogError("Unable to modify message at index {Index} because it is authored by another user: '{AuthorUsername}' ({AuthorId})", index,
@@ -153,7 +153,7 @@ public class NitroxBotService : IHostedService, IDisposable
             return;
         }
 
-        // Modify message that is authored by this bot.
+        // Modify message that was authored by this bot to the new content.
         await channel.ModifyMessageAsync(messages[index].Id, props =>
         {
             props.Content = "";

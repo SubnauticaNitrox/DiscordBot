@@ -1,18 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Company>Nitrox Team</Company>
         <Product>Nitrox Discord Bot</Product>
         <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <OutputType>Exe</OutputType>
+        <ServerGarbageCollection>true</ServerGarbageCollection>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Cronos" Version="0.7.1" />
-        <PackageReference Include="Discord.Net" Version="3.9.0" />
-        <PackageReference Include="System.Reactive" Version="5.0.0" />
+        <PackageReference Include="Cronos" Version="0.7.1"/>
+        <PackageReference Include="Discord.Net" Version="3.9.0"/>
+        <PackageReference Include="System.Reactive" Version="5.0.0"/>
     </ItemGroup>
 </Project>

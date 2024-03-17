@@ -18,13 +18,6 @@ public class MotdConfig
 
     public record MotdMessage
     {
-        public record Field
-        {
-            [Required] public string Name { get; set; } = "";
-            [Required] public string Content { get; set; } = "";
-            public bool IsInline { get; set; }
-        }
-
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
         public string Url { get; set; } = "";
@@ -34,5 +27,12 @@ public class MotdConfig
         public string ThumbnailUrl { get; set; } = "";
         public string Color { get; set; } = "#00FFFF";
         public IEnumerable<Field> Fields { get; set; }
+
+        public record Field
+        {
+            [Required] public string Name { get; set; } = "";
+            [Required] public string Content { get; set; } = "";
+            public bool IsInline { get; set; }
+        }
     }
 }
