@@ -1,12 +1,15 @@
 [*]
 charset = utf-8
 end_of_line = lf
-trim_trailing_whitespace = false
+trim_trailing_whitespace = true
 insert_final_newline = false
 indent_style = space
 indent_size = 4
 
 # Microsoft .NET properties
+csharp_preserve_single_line_statements = false
+csharp_braces_for_foreach = required
+csharp_wrap_parameters_style = chop_if_long
 csharp_new_line_before_members_in_object_initializers = false
 csharp_preferred_modifier_order = public, private, protected, internal, file, new, static, abstract, virtual, sealed, readonly, override, extern, unsafe, volatile, async, required:suggestion
 csharp_style_prefer_utf8_string_literals = true:suggestion

@@ -138,7 +138,7 @@ public class NitroxBotService : IHostedService, IDisposable
             return;
         }
 
-        // Send message if index is outside of total messages.
+        // Send message if index is outside total messages.
         IMessage[] messages = await GetMessagesAsync(channel, index + 2);
         if (index >= messages.Length)
         {

@@ -18,15 +18,9 @@ ConfigurationManager config = builder.Configuration;
 
 // Configuration
 config.AddJsonFile("appsettings.json", true, true);
-if (builder.Environment.IsProduction())
-{
-    config.AddJsonFile("appsettings.Production.json", true, true);
-}
+if (builder.Environment.IsProduction()) config.AddJsonFile("appsettings.Production.json", true, true);
 
-if (builder.Environment.IsDevelopment())
-{
-    config.AddJsonFile("appsettings.Development.json", true, true);
-}
+if (builder.Environment.IsDevelopment()) config.AddJsonFile("appsettings.Development.json", true, true);
 
 // Validation
 services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
@@ -34,6 +28,11 @@ services.AddOptions<ChannelCleanupConfig>().Bind(config).ValidateDataAnnotations
 services.AddOptions<MotdConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
 
 // Services
+services.Configure<HostOptions>(options =>
+{
+    options.ServicesStartConcurrently = true;
+    options.ServicesStopConcurrently = true;
+});
 services.AddLogging(opt => opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff "));
 // TODO: Discord integration: services.AddScoped<AuthenticationStateProvider, DiscordAuthenticationStateProvider>();
 services.AddHostedSingleton<NitroxBotService>();
