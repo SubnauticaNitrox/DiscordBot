@@ -36,7 +36,8 @@ public class AutoResponseConfig
     {
         public enum Types
         {
-            MessageRoles
+            MessageRoles,
+            MessageUsers
         }
 
         [Required] public Types Type { get; init; }

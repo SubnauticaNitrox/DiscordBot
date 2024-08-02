@@ -209,6 +209,22 @@ public class NitroxBotService : IHostedService, IDisposable
         return result.Values;
     }
 
+    public IEnumerable<SocketGuildUser> GetUsersByIds(SocketGuild guild, params ulong[] userIds)
+    {
+        if (userIds is null or [])
+        {
+            yield break;
+        }
+        foreach (ulong userId in userIds)
+        {
+            SocketGuildUser user = guild.GetUser(userId);
+            if (user != null)
+            {
+                yield return user;
+            }
+        }
+    }
+
     public IEnumerable<SocketGuildUser> GetUsersWithPermissions(SocketGuild guild, Func<GuildPermissions, bool> predicate)
     {
         Dictionary<ulong, SocketGuildUser> users = [];

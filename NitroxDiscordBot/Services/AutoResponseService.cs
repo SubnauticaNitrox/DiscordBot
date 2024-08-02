@@ -60,6 +60,16 @@ public class AutoResponseService : DiscordBotHostedService
                             await moderator.SendMessageAsync($"[AutoResponse {definition.Name}] {author.Mention} said the following:{Environment.NewLine}{message.Content}");
                         }
                         break;
+                    case Response.Types.MessageUsers:
+                        ulong[] userIds = response.Value
+                            .Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                            .Select(r => ulong.TryParse(r, out ulong userId) ? userId : 0).Where(r => r != 0)
+                            .ToArray();
+                        foreach (SocketGuildUser user in Bot.GetUsersByIds(author.Guild, userIds))
+                        {
+                            await user.SendMessageAsync($"[AutoResponse {definition.Name}] {author.Mention} said the following:{Environment.NewLine}{message.Content}");
+                        }
+                        break;
                     default:
                         Log.LogWarning("Unhandled response type '{ResponseType}' with value '{ResponseValue}'", response.Type,
                             response.Value);
