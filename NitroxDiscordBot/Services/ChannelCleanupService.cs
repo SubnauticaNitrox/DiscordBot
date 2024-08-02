@@ -58,21 +58,21 @@ public class ChannelCleanupService : DiscordBotHostedService
     /// <summary>
     ///     Gets the cleanup tasks as provided by configuration.
     /// </summary>
-    public IEnumerable<ChannelCleanupConfig.ChannelCleanup> CleanupDefinitions =>
+    public IEnumerable<ChannelCleanupConfig.ChannelCleanup> Definitions =>
         options.CurrentValue.CleanupDefinitions ?? ArraySegment<ChannelCleanupConfig.ChannelCleanup>.Empty;
 
     private void OptionsChanged(ChannelCleanupConfig obj)
     {
         scheduledTasks.Clear();
 
-        int definitions = CleanupDefinitions.Count();
+        int definitions = Definitions.Count();
         if (definitions < 1)
         {
             Log.LogInformation("Cleanup service disabled");
         }
         else
         {
-            string cleanupTaskSummary = string.Join(Environment.NewLine, CleanupDefinitions.Select(t => t.ToString()));
+            string cleanupTaskSummary = string.Join(Environment.NewLine, Definitions.Select(t => t.ToString()));
             Log.LogInformation("Found {Count} cleanup tasks:{NewLine}{CleanupTasks}", definitions, Environment.NewLine,
                 cleanupTaskSummary);
         }
@@ -138,7 +138,7 @@ public class ChannelCleanupService : DiscordBotHostedService
             }
 
             // Check if cleanup definitions indicates that task should run now, keeping track if task already ran.
-            foreach (ChannelCleanupConfig.ChannelCleanup cleanupDefinition in CleanupDefinitions)
+            foreach (ChannelCleanupConfig.ChannelCleanup cleanupDefinition in Definitions)
             {
                 if (cancellationToken.IsCancellationRequested) break;
                 if (!scheduledTasks.TryGetValue(cleanupDefinition, out DateTime scheduledTime))

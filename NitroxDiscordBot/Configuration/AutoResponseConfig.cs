@@ -28,6 +28,8 @@ public class AutoResponseConfig
         public object Value { get; init; }
 
         [ConfigurationKeyName(nameof(Value))] public object[] Values { get; init; }
+
+        public override string ToString() => $$"""[{{nameof(Filter)}} { {{nameof(Type)}} = {{Type}}, {{nameof(Value)}} = {{(Values != null ? string.Join(", ", Values ?? []) : Value)}} }]""";
     }
 
     public record Response

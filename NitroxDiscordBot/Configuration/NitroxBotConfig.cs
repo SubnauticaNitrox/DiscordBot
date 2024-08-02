@@ -10,4 +10,6 @@ public class NitroxBotConfig
     [Required]
     [RegularExpression(@"[a-zA-Z0-9\._]{58,}")]
     public string Token { get; set; } = "";
+    [Required]
+    public ulong GuildId { get; set; }
 }

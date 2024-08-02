@@ -1,5 +1,7 @@
-﻿using Discord;
+﻿using System.Reflection;
+using Discord;
 using Discord.Commands;
+using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Options;
 using NitroxDiscordBot.Configuration;
@@ -14,6 +16,8 @@ public class NitroxBotService : IHostedService, IDisposable
     private readonly ILogger log;
     private readonly DiscordSocketClient client;
     private readonly IOptionsMonitor<NitroxBotConfig> config;
+    private readonly IServiceProvider serviceProvider;
+    private InteractionService interactionService;
     public event EventHandler<SocketMessage> MessageReceived;
 
     /// <summary>
@@ -21,16 +25,41 @@ public class NitroxBotService : IHostedService, IDisposable
     /// </summary>
     private const ulong EarliestSnowflakeId = 5000000;
 
-    public NitroxBotService(IOptionsMonitor<NitroxBotConfig> config, ILogger<NitroxBotService> log)
+    public NitroxBotService(IOptionsMonitor<NitroxBotConfig> config, ILogger<NitroxBotService> log, IServiceProvider serviceProvider)
     {
         this.config = config;
         this.log = log;
+        this.serviceProvider = serviceProvider;
         client = new DiscordSocketClient(new DiscordSocketConfig
         {
             GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent
         });
+        interactionService = new InteractionService(client, new InteractionServiceConfig
+        {
+            UseCompiledLambda = true
+        });
         client.Log += ClientLogReceived;
+        client.Ready += ClientOnReady;
         client.MessageReceived += BotOnMessageReceived;
+    }
+
+    private async Task ClientOnReady()
+    {
+        await interactionService.AddModulesAsync(Assembly.GetAssembly(typeof(NitroxBotService)), serviceProvider);
+        await interactionService.RegisterCommandsToGuildAsync(config.CurrentValue.GuildId);
+
+        client.InteractionCreated += async interaction =>
+        {
+            SocketInteractionContext ctx = new(client, interaction);
+            try
+            {
+                await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, $"Error occurred handling interaction from user {interaction.User.Id}: '{interaction.User.Username}'");
+            }
+        };
     }
 
     private Task BotOnMessageReceived(SocketMessage arg)
@@ -212,7 +241,7 @@ public class NitroxBotService : IHostedService, IDisposable
         return messages.ToArray();
     }
 
-    private async Task<T> GetChannel<T>(ulong channelId) where T : class, IChannel
+    public async Task<T> GetChannel<T>(ulong channelId) where T : class, IChannel
     {
         T channel = await client.GetChannelAsync(channelId) as T;
         if (channel == null)
