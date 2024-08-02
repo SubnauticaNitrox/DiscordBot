@@ -25,6 +25,7 @@ https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permission
 
 ## Features
  - Purging channels of "old" messages
+ - Auto respond to user messages
 
 ## Example appsettings.json file
 ```json
