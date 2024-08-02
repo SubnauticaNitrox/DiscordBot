@@ -1,34 +1,36 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Microsoft.Extensions.Options;
-using NitroxDiscordBot.Configuration;
+using Microsoft.EntityFrameworkCore;
 using NitroxDiscordBot.Core;
-using static NitroxDiscordBot.Configuration.AutoResponseConfig;
+using NitroxDiscordBot.Db;
+using NitroxDiscordBot.Db.Models;
+using static NitroxDiscordBot.Db.Models.AutoResponse;
 
 namespace NitroxDiscordBot.Services;
 
 public class AutoResponseService : DiscordBotHostedService
 {
-    private readonly IOptionsMonitor<AutoResponseConfig> options;
+    private readonly BotContext db;
     private readonly char[] sentenceSplitCharacters = ['.', '!', '?', '"', '`'];
 
     public AutoResponseService(NitroxBotService bot,
-        IOptionsMonitor<AutoResponseConfig> options,
+        BotContext db,
         ILogger<AutoResponseService> log) : base(bot, log)
     {
-        this.options = options ?? throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(db);
+        this.db = db;
     }
 
-    public IEnumerable<Definition> Definitions => options.CurrentValue.AutoResponseDefinitions;
-
-    public override async Task StartAsync(CancellationToken cancellationToken)
+    public override Task StartAsync(CancellationToken cancellationToken)
     {
         Bot.MessageReceived += BotOnMessageReceived;
+        return Task.CompletedTask;
     }
 
-    public override async Task StopAsync(CancellationToken cancellationToken)
+    public override Task StopAsync(CancellationToken cancellationToken)
     {
         Bot.MessageReceived -= BotOnMessageReceived;
+        return Task.CompletedTask;
     }
 
     private async void BotOnMessageReceived(object sender, SocketMessage rawMessage)
@@ -42,17 +44,18 @@ public class AutoResponseService : DiscordBotHostedService
 
     private async Task ModerateMessageAsync(SocketGuildUser author, SocketUserMessage message)
     {
-        foreach (Definition definition in Definitions)
+        foreach (AutoResponse definition in db.AutoResponses
+                     .Include(r => r.Filters)
+                     .Include(r => r.Responses))
         {
             if (!MatchesFilters(definition.Filters, author, message)) continue;
 
-            foreach (Response response in definition.Responses)
+            await foreach (Response response in definition.Responses.ToAsyncEnumerable())
             {
                 switch (response.Type)
                 {
                     case Response.Types.MessageRoles:
                         ulong[] roles = response.Value
-                            .Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                             .Select(r => ulong.TryParse(r, out ulong roleId) ? roleId : 0).Where(r => r != 0)
                             .ToArray();
                         foreach (SocketGuildUser moderator in Bot.GetUsersWithAnyRoles(author.Guild, roles))
@@ -62,10 +65,9 @@ public class AutoResponseService : DiscordBotHostedService
                         break;
                     case Response.Types.MessageUsers:
                         ulong[] userIds = response.Value
-                            .Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                             .Select(r => ulong.TryParse(r, out ulong userId) ? userId : 0).Where(r => r != 0)
                             .ToArray();
-                        foreach (SocketGuildUser user in Bot.GetUsersByIds(author.Guild, userIds))
+                        foreach (IGuildUser user in await Bot.GetUsersByIdsAsync(author.Guild, userIds))
                         {
                             await user.SendMessageAsync($"[AutoResponse {definition.Name}] {author.Mention} said the following:{Environment.NewLine}{message.Content}");
                         }
@@ -79,20 +81,20 @@ public class AutoResponseService : DiscordBotHostedService
         }
     }
 
-    private bool MatchesFilters(Filter[] filters, SocketGuildUser author, SocketUserMessage message)
+    private bool MatchesFilters(IEnumerable<Filter> filters, SocketGuildUser author, SocketUserMessage message)
     {
         foreach (Filter filter in filters)
         {
             switch (filter.Type)
             {
-                case Filter.Types.Channel when filter.Value is string valueStr && ulong.TryParse(valueStr, out ulong channelId):
+                case Filter.Types.Channel when filter.Value is [{} value] && ulong.TryParse(value, out ulong channelId):
                     if (message.Channel.Id != channelId) return false;
                     break;
-                case Filter.Types.UserJoinTimeSpan when filter.Value is string valueStr &&
-                                                                              TimeSpan.TryParse(valueStr, out TimeSpan valueTimeSpan):
+                case Filter.Types.UserJoinTimeSpan when filter.Value is [{} value] &&
+                                                                     TimeSpan.TryParse(value, out TimeSpan valueTimeSpan):
                     if (DateTimeOffset.UtcNow - author.JoinedAt > valueTimeSpan) return false;
                     break;
-                case Filter.Types.MessageWordOrder when filter.Values is [..] values:
+                case Filter.Types.MessageWordOrder when filter.Value is [..] values:
                     string[] sentences = message.Content.Split(sentenceSplitCharacters,
                         StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
                     foreach (string sentence in sentences)

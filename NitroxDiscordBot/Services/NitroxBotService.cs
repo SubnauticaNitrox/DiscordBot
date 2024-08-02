@@ -5,6 +5,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Options;
 using NitroxDiscordBot.Configuration;
+using NitroxDiscordBot.Core;
 
 namespace NitroxDiscordBot.Services;
 
@@ -17,7 +18,7 @@ public class NitroxBotService : IHostedService, IDisposable
     private readonly DiscordSocketClient client;
     private readonly IOptionsMonitor<NitroxBotConfig> config;
     private readonly IServiceProvider serviceProvider;
-    private InteractionService interactionService;
+    private readonly InteractionService interactionService;
     public event EventHandler<SocketMessage> MessageReceived;
 
     /// <summary>
@@ -41,6 +42,29 @@ public class NitroxBotService : IHostedService, IDisposable
         client.Log += ClientLogReceived;
         client.Ready += ClientOnReady;
         client.MessageReceived += BotOnMessageReceived;
+        client.ButtonExecuted += ClientOnComponentInteraction;
+        client.SelectMenuExecuted += ClientOnComponentInteraction;
+        client.ModalSubmitted += modal =>
+        {
+            // TODO: Also handle cancel signal so modal tasks aren't waiting forever on a non-submitted modal.
+            ReadOnlySpan<char> handleId = modal.Data.GetCapturedHandleId();
+            if (!handleId.IsEmpty)
+            {
+                return InteractionHandle.Signal(handleId.ToString(), modal);
+            }
+            return modal.DeferAsync(true);
+        };
+    }
+
+    private Task ClientOnComponentInteraction(SocketMessageComponent component)
+    {
+        // See docs for interaction order: https://docs.discordnet.dev/faq/int_framework/respondings-schemes.html
+        ReadOnlySpan<char> handleId = component.Data.GetCapturedHandleId();
+        if (!handleId.IsEmpty)
+        {
+            return InteractionHandle.Signal(handleId.ToString(), component);
+        }
+        return component.DeferAsync(true);
     }
 
     private async Task ClientOnReady()
@@ -89,7 +113,7 @@ public class NitroxBotService : IHostedService, IDisposable
             return differenceFromNow >= ageThreshold && differenceFromNow.TotalDays <= 13;
         }
 
-        IMessageChannel channel = await GetChannel<IMessageChannel>(channelId);
+        IMessageChannel channel = await GetChannelAsync<IMessageChannel>(channelId);
         if (channel == null)
         {
             return;
@@ -161,7 +185,7 @@ public class NitroxBotService : IHostedService, IDisposable
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
-        IMessageChannel channel = await GetChannel<IMessageChannel>(channelId);
+        IMessageChannel channel = await GetChannelAsync<IMessageChannel>(channelId);
         if (channel == null)
         {
             return;
@@ -190,6 +214,24 @@ public class NitroxBotService : IHostedService, IDisposable
         });
     }
 
+    public IEnumerable<SocketRole> GetRolesByIds(SocketGuild guild, params ulong[] roles)
+    {
+        if (guild == null)
+        {
+            yield break;
+        }
+        foreach (SocketRole role in guild.Roles)
+        {
+            foreach (ulong roleId in roles)
+            {
+                if (role.Id == roleId)
+                {
+                    yield return role;
+                }
+            }
+        }
+    }
+
     public IEnumerable<SocketGuildUser> GetUsersWithAnyRoles(SocketGuild guild, params ulong[] roles)
     {
         Dictionary<ulong, SocketGuildUser> result = [];
@@ -209,20 +251,26 @@ public class NitroxBotService : IHostedService, IDisposable
         return result.Values;
     }
 
-    public IEnumerable<SocketGuildUser> GetUsersByIds(SocketGuild guild, params ulong[] userIds)
+    public async Task<List<IGuildUser>> GetUsersByIdsAsync(IGuild guild, params ulong[] userIds)
     {
+        if (guild == null)
+        {
+            return [];
+        }
         if (userIds is null or [])
         {
-            yield break;
+            return [];
         }
+        List<IGuildUser> users = [];
         foreach (ulong userId in userIds)
         {
-            SocketGuildUser user = guild.GetUser(userId);
+            IGuildUser user = await guild.GetUserAsync(userId, CacheMode.AllowDownload);
             if (user != null)
             {
-                yield return user;
+                users.Add(user);
             }
         }
+        return users;
     }
 
     public IEnumerable<SocketGuildUser> GetUsersWithPermissions(SocketGuild guild, Func<GuildPermissions, bool> predicate)
@@ -257,7 +305,7 @@ public class NitroxBotService : IHostedService, IDisposable
         return messages.ToArray();
     }
 
-    public async Task<T> GetChannel<T>(ulong channelId) where T : class, IChannel
+    public async Task<T> GetChannelAsync<T>(ulong channelId) where T : class, IChannel
     {
         T channel = await client.GetChannelAsync(channelId) as T;
         if (channel == null)

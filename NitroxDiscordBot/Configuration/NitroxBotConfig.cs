@@ -12,4 +12,8 @@ public class NitroxBotConfig
     public string Token { get; set; } = "";
     [Required]
     public ulong GuildId { get; set; }
+    /// <summary>
+    ///     Optional list of Discord user ids that are developers of this bot.
+    /// </summary>
+    public ulong[] Developers { get; set; } = [];
 }

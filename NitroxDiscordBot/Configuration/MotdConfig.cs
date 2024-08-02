@@ -5,6 +5,7 @@ namespace NitroxDiscordBot.Configuration;
 /// <summary>
 ///     Message-of-the-day (MOTD) configuration.
 /// </summary>
+[Obsolete("Use database entity instead of configuration")]
 public class MotdConfig
 {
     public IEnumerable<ChannelMotd> ChannelMotds { get; set; }

@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using NitroxDiscordBot.Configuration;
+using NitroxDiscordBot.Db;
 using NitroxDiscordBot.Services;
 
 if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") is null)
@@ -22,9 +24,6 @@ if (builder.Environment.IsDevelopment()) config.AddJsonFile("appsettings.Develop
 
 // Validation
 services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
-services.AddOptions<ChannelCleanupConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
-services.AddOptions<MotdConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
-services.AddOptions<AutoResponseConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
 
 // Services
 services.Configure<HostOptions>(options =>
@@ -33,10 +32,17 @@ services.Configure<HostOptions>(options =>
     options.ServicesStopConcurrently = true;
 });
 services.AddLogging(opt => opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff "));
-// TODO: Discord integration: services.AddScoped<AuthenticationStateProvider, DiscordAuthenticationStateProvider>();
+services.AddTransient<BotContext>();
 services.AddHostedSingleton<NitroxBotService>();
 services.AddHostedSingleton<CommandHandlerService>();
 services.AddHostedSingleton<AutoResponseService>();
 services.AddHostedSingleton<ChannelCleanupService>();
 
-builder.Build().Run();
+IHost host = builder.Build();
+// Ensure database is up-to-date
+using (IServiceScope scope = host.Services.CreateScope())
+{
+    BotContext db = scope.ServiceProvider.GetRequiredService<BotContext>();
+    db.Database.Migrate();
+}
+host.Run();

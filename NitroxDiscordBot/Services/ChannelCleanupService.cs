@@ -1,10 +1,9 @@
 ﻿using System.Collections.Concurrent;
-using System.Reactive.Linq;
 using System.Threading.Channels;
 using Cronos;
-using Microsoft.Extensions.Options;
-using NitroxDiscordBot.Configuration;
 using NitroxDiscordBot.Core;
+using NitroxDiscordBot.Db;
+using NitroxDiscordBot.Db.Models;
 using Polly;
 using Polly.Retry;
 
@@ -15,15 +14,14 @@ namespace NitroxDiscordBot.Services;
 /// </summary>
 public class ChannelCleanupService : DiscordBotHostedService
 {
-    private readonly IOptionsMonitor<ChannelCleanupConfig> options;
-
     private readonly ResiliencePipeline resilience;
+    private readonly BotContext db;
 
     /// <summary>
     ///     Gets a list of cleanup tasks mapped to a cleanup definition in the config file. Each config entry should have only
     ///     1 (future) cleanup task.
     /// </summary>
-    private readonly ConcurrentDictionary<ChannelCleanupConfig.ChannelCleanup, DateTime> scheduledTasks = [];
+    private readonly ConcurrentDictionary<Cleanup, DateTime> scheduledTasks = [];
 
     private Task consumerTask;
     private Task producerTask;
@@ -32,13 +30,14 @@ public class ChannelCleanupService : DiscordBotHostedService
     /// <summary>
     ///     Cleanup tasks that are submitted to, based on the <see cref="scheduledTasks" />.
     /// </summary>
-    private Channel<ChannelCleanupConfig.ChannelCleanup> workQueue;
+    private Channel<Cleanup> workQueue;
 
     public ChannelCleanupService(NitroxBotService bot,
-        IOptionsMonitor<ChannelCleanupConfig> options,
+        BotContext db,
         ILogger<ChannelCleanupService> log) : base(bot, log)
     {
-        this.options = options ?? throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(db);
+        this.db = db;
         resilience = new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions
             {
@@ -50,32 +49,6 @@ public class ChannelCleanupService : DiscordBotHostedService
             })
             .AddTimeout(TimeSpan.FromSeconds(30))
             .Build();
-
-        RegisterDisposable(options.AsObservable().Throttle(TimeSpan.FromSeconds(2)).StartWith(options.CurrentValue)
-            .Subscribe(OptionsChanged));
-    }
-
-    /// <summary>
-    ///     Gets the cleanup tasks as provided by configuration.
-    /// </summary>
-    public IEnumerable<ChannelCleanupConfig.ChannelCleanup> Definitions =>
-        options.CurrentValue.CleanupDefinitions ?? ArraySegment<ChannelCleanupConfig.ChannelCleanup>.Empty;
-
-    private void OptionsChanged(ChannelCleanupConfig obj)
-    {
-        scheduledTasks.Clear();
-
-        int definitions = Definitions.Count();
-        if (definitions < 1)
-        {
-            Log.LogInformation("Cleanup service disabled");
-        }
-        else
-        {
-            string cleanupTaskSummary = string.Join(Environment.NewLine, Definitions.Select(t => t.ToString()));
-            Log.LogInformation("Found {Count} cleanup tasks:{NewLine}{CleanupTasks}", definitions, Environment.NewLine,
-                cleanupTaskSummary);
-        }
     }
 
     public override Task StartAsync(CancellationToken cancellationToken)
@@ -87,7 +60,7 @@ public class ChannelCleanupService : DiscordBotHostedService
         serviceCancellation = new CancellationTokenSource();
 
         workQueue = workQueue == null || workQueue.Reader.Completion.IsCompleted
-            ? Channel.CreateBounded<ChannelCleanupConfig.ChannelCleanup>(20)
+            ? Channel.CreateBounded<Cleanup>(20)
             : workQueue;
         CancellationToken workCancelToken = serviceCancellation.Token;
         RegisterDisposable(workCancelToken.Register(() => workQueue.Writer.Complete()), true);
@@ -110,22 +83,23 @@ public class ChannelCleanupService : DiscordBotHostedService
     /// <param name="cancellationToken"></param>
     private async Task RunCleanupProducerAsync(CancellationToken cancellationToken)
     {
-        static DateTime GenerateNextOccurrence(ChannelCleanupConfig.ChannelCleanup definition)
+        static DateTime GenerateNextOccurrence(Cleanup definition)
         {
-            return CronExpression.Parse(definition.Schedule).GetNextOccurrence(DateTime.UtcNow) ??
+            return CronExpression.Parse(definition.CronSchedule).GetNextOccurrence(DateTime.UtcNow) ??
                    throw new Exception(
-                       $"Cron expression '{definition.Schedule}' does not have an occurrence after {DateTime.UtcNow}; the service will stop.");
+                       $"Cron expression '{definition.CronSchedule}' does not have an occurrence after {DateTime.UtcNow}; the service will stop.");
         }
 
         static DateTime AddOrUpdateScheduleForCleanupDefinition(
-            ConcurrentDictionary<ChannelCleanupConfig.ChannelCleanup, DateTime> scheduledTasks,
-            ChannelCleanupConfig.ChannelCleanup definition)
+            ConcurrentDictionary<Cleanup, DateTime> scheduledTasks,
+            Cleanup definition)
         {
             return scheduledTasks.AddOrUpdate(definition, GenerateNextOccurrence,
                 static (t, _) => GenerateNextOccurrence(t));
         }
 
-        using PeriodicTimer timer = new(TimeSpan.FromMilliseconds(1000));
+        // TODO: Don't use periodic timer but calculate next first schedule to run and wait for that.
+        using PeriodicTimer timer = new(TimeSpan.FromMilliseconds(5000));
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -138,7 +112,7 @@ public class ChannelCleanupService : DiscordBotHostedService
             }
 
             // Check if cleanup definitions indicates that task should run now, keeping track if task already ran.
-            foreach (ChannelCleanupConfig.ChannelCleanup cleanupDefinition in Definitions)
+            await foreach (Cleanup cleanupDefinition in db.Cleanups.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
                 if (cancellationToken.IsCancellationRequested) break;
                 if (!scheduledTasks.TryGetValue(cleanupDefinition, out DateTime scheduledTime))
@@ -163,13 +137,13 @@ public class ChannelCleanupService : DiscordBotHostedService
     {
         try
         {
-            await foreach (ChannelCleanupConfig.ChannelCleanup cleanup in workQueue.Reader.ReadAllAsync(
+            await foreach (Cleanup cleanup in workQueue.Reader.ReadAllAsync(
                                cancellationToken))
             {
                 await resilience.ExecuteAsync(async (context, ct) =>
                 {
-                    (NitroxBotService bot, ChannelCleanupConfig.ChannelCleanup cleanupItem) = context;
-                    await bot.DeleteOldMessagesAsync(cleanupItem.ChannelId, cleanupItem.MaxAge, ct);
+                    (NitroxBotService bot, Cleanup cleanupItem) = context;
+                    await bot.DeleteOldMessagesAsync(cleanupItem.ChannelId, cleanupItem.AgeThreshold, ct);
                 }, (Bot, cleanup), cancellationToken);
             }
         }

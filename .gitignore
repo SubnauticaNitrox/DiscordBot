@@ -14,3 +14,6 @@ _UpgradeReport_Files/
 Thumbs.db
 Desktop.ini
 .DS_Store
+**/nitroxbot.db
+**/nitroxbot.db-shm
+**/nitroxbot.db-wal

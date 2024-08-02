@@ -3,13 +3,13 @@ Discord bot used by Nitrox team.
 
 ## Setup
 
-1. Ask for the token (as opposed to reset)
-2. Create "appsettings.Development.json" file and set the token value.
+1. Ask for the Discord bot token (as opposed to reset)
+2. Create "appsettings.Development.json" file and set the `Token` + `GuildId`. See below for appsettings.json template.
 3. Add the bot to your private server by following the steps (bot invite URL is generated [here](https://discord.com/developers/applications/405122994348752896/oauth2/url-generator)):
 https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permissions=17179943952&scope=bot
-4. Execute `dev-run.sh` script.
+4. Deploy the bot or run it locally in development mode for testing.
 
-## Deploy
+## Deploy (docker)
 
  - With the Rider IDE you can connect to a docker host via SSH to push & build the container remotely.
  - To build it from CLI, see below.
@@ -24,41 +24,18 @@ https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permission
     ```
 
 ## Features
- - Purging channels of "old" messages
- - Auto respond to user messages
+ - Purging channels of "old" messages (configure with `/cleanup`)
+ - Auto respond to user messages (configure with `/autoresponse`)
+### Backend features
+ - Sqlite database - which is stored in `/app/data/nitroxbot.db`. Docker mount the `/app/data` directory somewhere on your host to reuse the database. Otherwise, the database is gone when the docker container is deleted and you need to reconfigure the bot again.
 
 ## Example appsettings.json file
 ```json
 {
     "Token": "DISCORD_TOKEN_HERE",
-    "CleanupDefinitions": [
-        {
-            "ChannelId": 598546552918900774,
-            "MaxAge": "1.0:0",
-            "Schedule": "* * * * *"
-        }
-    ],
-    "AutoResponseDefinitions": [
-        {
-            "Name": "Emergency help",
-            "Filters": [
-                {
-                    "Type": "Channel",
-                    "Value": 970914315307724850
-                },
-                {
-                    "Type": "MessageWordOrder",
-                    "Value": ["I am lost", "spammer here"]
-                }
-            ],
-            "Responses": [
-                {
-                    "Type": "MessageRoles",
-                    "Value": "1268748889738182676"
-                }
-            ]
-        }
-    ]
+    "GuildId": MY_SERVER_ID_HERE,
+    "Developers": [MY_DISCORD_USER_ID]
 }
 ```
-MaxAge is a `TimeSpan` format for 1 day
+ - GuildId is needed as this bot is meant to manage only 1 server at a time.
+ - Developers field is optional but gives you super admin access to the commands of the bot, no matter the Discord server.
