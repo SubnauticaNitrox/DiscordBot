@@ -50,7 +50,7 @@ public class CommandHandlerService : DiscordBotHostedService
         }
         catch (Exception ex)
         {
-            Log.LogError(ex, @"Error while handling command '{MessageContent}' by user: '{MessageAuthor}'",
+            Log.LogError(ex, "Error while handling command '{MessageContent}' by user: '{MessageAuthor}'",
                 message.CleanContent, message.Author);
         }
     }

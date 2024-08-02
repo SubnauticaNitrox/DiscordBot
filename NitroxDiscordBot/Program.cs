@@ -1,5 +1,4 @@
 using NitroxDiscordBot.Configuration;
-using NitroxDiscordBot.Core;
 using NitroxDiscordBot.Services;
 
 if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") is null)
@@ -19,13 +18,13 @@ ConfigurationManager config = builder.Configuration;
 // Configuration
 config.AddJsonFile("appsettings.json", true, true);
 if (builder.Environment.IsProduction()) config.AddJsonFile("appsettings.Production.json", true, true);
-
 if (builder.Environment.IsDevelopment()) config.AddJsonFile("appsettings.Development.json", true, true);
 
 // Validation
 services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
 services.AddOptions<ChannelCleanupConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
 services.AddOptions<MotdConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
+services.AddOptions<AutoResponseConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
 
 // Services
 services.Configure<HostOptions>(options =>
@@ -37,6 +36,7 @@ services.AddLogging(opt => opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:
 // TODO: Discord integration: services.AddScoped<AuthenticationStateProvider, DiscordAuthenticationStateProvider>();
 services.AddHostedSingleton<NitroxBotService>();
 services.AddHostedSingleton<CommandHandlerService>();
+services.AddHostedSingleton<AutoResponseService>();
 services.AddHostedSingleton<ChannelCleanupService>();
 
 builder.Build().Run();

@@ -5,7 +5,7 @@ Discord bot used by Nitrox team.
 
 1. Ask for the token (as opposed to reset)
 2. Create "appsettings.Development.json" file and set the token value.
-3. Add the bot to your private server by following the steps (bot invite URL is generated [here](https://discord.com/developers/applications/405122994348752896/oauth2/url-generator)):  
+3. Add the bot to your private server by following the steps (bot invite URL is generated [here](https://discord.com/developers/applications/405122994348752896/oauth2/url-generator)):
 https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permissions=17179943952&scope=bot
 4. Execute `dev-run.sh` script.
 
@@ -35,6 +35,27 @@ https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permission
             "ChannelId": 598546552918900774,
             "MaxAge": "1.0:0",
             "Schedule": "* * * * *"
+        }
+    ],
+    "AutoResponseDefinitions": [
+        {
+            "Name": "Emergency help",
+            "Filters": [
+                {
+                    "Type": "Channel",
+                    "Value": 970914315307724850
+                },
+                {
+                    "Type": "MessageWordOrder",
+                    "Value": ["I am lost", "spammer here"]
+                }
+            ],
+            "Responses": [
+                {
+                    "Type": "MessageRoles",
+                    "Value": "1268748889738182676"
+                }
+            ]
         }
     ]
 }

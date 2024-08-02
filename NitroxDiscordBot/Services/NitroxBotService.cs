@@ -161,6 +161,47 @@ public class NitroxBotService : IHostedService, IDisposable
         });
     }
 
+    public IEnumerable<SocketGuildUser> GetUsersWithAnyRoles(SocketGuild guild, params ulong[] roles)
+    {
+        Dictionary<ulong, SocketGuildUser> result = [];
+        foreach (SocketRole role in guild.Roles)
+        {
+            foreach (ulong roleId in roles)
+            {
+                if (role.Id == roleId)
+                {
+                    foreach (SocketGuildUser member in role.Members)
+                    {
+                        result[member.Id] = member;
+                    }
+                }
+            }
+        }
+        return result.Values;
+    }
+
+    public IEnumerable<SocketGuildUser> GetUsersWithPermissions(SocketGuild guild, Func<GuildPermissions, bool> predicate)
+    {
+        Dictionary<ulong, SocketGuildUser> users = [];
+        if (predicate(guild.Owner.GuildPermissions))
+        {
+            users[guild.Owner.Id] = guild.Owner;
+        }
+
+        foreach (SocketRole role in guild.Roles)
+        {
+            if (predicate(role.Permissions))
+            {
+                foreach (SocketGuildUser user in role.Members)
+                {
+                    users[user.Id] = user;
+                }
+            }
+        }
+
+        return users.Values;
+    }
+
     private async Task<IMessage[]> GetMessagesAsync(IMessageChannel channel, int limit = 100, bool sorted = true)
     {
         IEnumerable<IMessage> messages = await channel.GetMessagesAsync(EarliestSnowflakeId, Direction.After, limit).FlattenAsync();
