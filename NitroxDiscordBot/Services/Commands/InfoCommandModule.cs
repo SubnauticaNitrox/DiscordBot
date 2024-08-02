@@ -5,7 +5,6 @@ using Discord.Rest;
 
 namespace NitroxDiscordBot.Services.Commands;
 
-[EnabledInDm(false)]
 [DefaultMemberPermissions(GuildPermission.ManageMessages)]
 public class InfoCommandModule : ModuleBase<SocketCommandContext>
 {
