@@ -99,10 +99,10 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 .AppendLine(" - Filters:");
             foreach (Filter filter in definition.Filters)
             {
-                sb.Append("   - ").Append(filter.Type).Append(": ");
+                sb.Append("   - **").Append(filter.Type.GetDescriptionOrName()).Append("**: ");
                 switch (filter.Type)
                 {
-                    case Filter.Types.Channel:
+                    case Filter.Types.AnyChannel:
                         foreach (string channelIdString in filter.Value)
                         {
                             if (ulong.TryParse(channelIdString, out ulong channelId))
@@ -116,11 +116,19 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                         }
                         sb.Remove(sb.Length - 1, 1);
                         break;
-                    case Filter.Types.UserJoinTimeSpan:
+                    case Filter.Types.UserJoinAge:
                         sb.Append(string.Join(", ", filter.Value.WhereTryParse<string, TimeSpan>(TimeSpan.TryParse).Select(t => t.ToPrettyFormat())));
                         break;
                     default:
-                        sb.Append(string.Join(", ", filter.Value));
+                        if (filter.Value.Length > 0)
+                        {
+                            sb.Append('`');
+                        }
+                        sb.Append(string.Join("`, `", filter.Value));
+                        if (filter.Value.Length > 0)
+                        {
+                            sb.Append('`');
+                        }
                         break;
                 }
                 sb.AppendLine();
@@ -129,7 +137,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             sb.AppendLine("  - Responses:");
             foreach (Response response in definition.Responses)
             {
-                sb.Append("   - ").Append(response.Type).Append(": ");
+                sb.Append("   - **").Append(response.Type.GetDescriptionOrName()).Append("**: ");
                 switch (response.Type)
                 {
                     case Response.Types.MessageUsers:
@@ -147,7 +155,15 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                         sb.Remove(sb.Length - 1, 1);
                         break;
                     default:
-                        sb.Append(string.Join(", ", response.Value));
+                        if (response.Value.Length > 0)
+                        {
+                            sb.Append('`');
+                        }
+                        sb.Append(string.Join("`, `", response.Value));
+                        if (response.Value.Length > 0)
+                        {
+                            sb.Append('`');
+                        }
                         break;
                 }
                 sb.AppendLine();
@@ -191,7 +207,12 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 await RespondAsync($"An auto response with the name `{autoResponseName}` was not found", ephemeral: true);
                 return;
             }
-            string[] values = value.Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            char[] valueSplitChars = type switch
+            {
+                Filter.Types.AnyChannel => [',', ' '],
+                _ => [',']
+            };
+            string[] values = value.Split(valueSplitChars, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             if (values is null or { Length: 0 })
             {
                 await RespondAsync("Filter value must not be empty", ephemeral: true);
@@ -200,14 +221,17 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             // Validate values are compatible with filter type
             switch (type)
             {
-                case Filter.Types.Channel when values is [_] && ulong.TryParse(values[0], out ulong channelId):
-                    if (await bot.GetChannelAsync<ITextChannel>(channelId) == null)
+                case Filter.Types.AnyChannel when values is [_, ..] && values.WhereTryParse<string, ulong>(ulong.TryParse).ToArray() is [_, ..] channelIds:
+                    foreach (ulong channelId in channelIds)
                     {
-                        await RespondAsync($"No text channel was found that has id `{channelId}`", ephemeral: true);
-                        return;
+                        if (await bot.GetChannelAsync<ITextChannel>(channelId) == null)
+                        {
+                            await RespondAsync($"No text channel was found that has id `{channelId}`", ephemeral: true);
+                            return;
+                        }
                     }
                     break;
-                case Filter.Types.UserJoinTimeSpan when values is [_] && TimeSpan.TryParse(values[0], out TimeSpan _):
+                case Filter.Types.UserJoinAge when values is [_] && TimeSpan.TryParse(values[0], out TimeSpan _):
                     break;
                 case Filter.Types.MessageWordOrder:
                     break;

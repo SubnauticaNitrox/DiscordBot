@@ -44,6 +44,11 @@ public class AutoResponseService : DiscordBotHostedService
 
     private async Task ModerateMessageAsync(SocketGuildUser author, SocketUserMessage message)
     {
+        static async Task NotifyModeratorAsync(IGuildUser userToNotify, string responseName, SocketGuildUser authorToReport, SocketUserMessage messageToReport)
+        {
+            await userToNotify.SendMessageAsync($"[{nameof(AutoResponse)} {responseName}] {authorToReport.Mention} said {messageToReport.GetJumpUrl()}:{Environment.NewLine}{messageToReport.Content}");
+        }
+
         foreach (AutoResponse definition in db.AutoResponses
                      .Include(r => r.Filters)
                      .Include(r => r.Responses))
@@ -58,9 +63,9 @@ public class AutoResponseService : DiscordBotHostedService
                         ulong[] roles = response.Value
                             .Select(r => ulong.TryParse(r, out ulong roleId) ? roleId : 0).Where(r => r != 0)
                             .ToArray();
-                        foreach (SocketGuildUser moderator in Bot.GetUsersWithAnyRoles(author.Guild, roles))
+                        foreach (SocketGuildUser user in Bot.GetUsersWithAnyRoles(author.Guild, roles))
                         {
-                            await moderator.SendMessageAsync($"[AutoResponse {definition.Name}] {author.Mention} said the following:{Environment.NewLine}{message.Content}");
+                            await NotifyModeratorAsync(user, definition.Name, author, message);
                         }
                         break;
                     case Response.Types.MessageUsers:
@@ -69,7 +74,7 @@ public class AutoResponseService : DiscordBotHostedService
                             .ToArray();
                         foreach (IGuildUser user in await Bot.GetUsersByIdsAsync(author.Guild, userIds))
                         {
-                            await user.SendMessageAsync($"[AutoResponse {definition.Name}] {author.Mention} said the following:{Environment.NewLine}{message.Content}");
+                            await NotifyModeratorAsync(user, definition.Name, author, message);
                         }
                         break;
                     default:
@@ -87,14 +92,14 @@ public class AutoResponseService : DiscordBotHostedService
         {
             switch (filter.Type)
             {
-                case Filter.Types.Channel when filter.Value is [{} value] && ulong.TryParse(value, out ulong channelId):
-                    if (message.Channel.Id != channelId) return false;
+                case Filter.Types.AnyChannel when filter.Value is [_, ..] && filter.Value.WhereTryParse<string, ulong>(ulong.TryParse).ToArray() is [_, ..] channelIds:
+                    if (!channelIds.Contains(message.Channel.Id)) return false;
                     break;
-                case Filter.Types.UserJoinTimeSpan when filter.Value is [{} value] &&
+                case Filter.Types.UserJoinAge when filter.Value is [{} value] &&
                                                                      TimeSpan.TryParse(value, out TimeSpan valueTimeSpan):
                     if (DateTimeOffset.UtcNow - author.JoinedAt > valueTimeSpan) return false;
                     break;
-                case Filter.Types.MessageWordOrder when filter.Value is [..] values:
+                case Filter.Types.MessageWordOrder when filter.Value is [_, ..] values:
                     string[] sentences = message.Content.Split(sentenceSplitCharacters,
                         StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
                     foreach (string sentence in sentences)

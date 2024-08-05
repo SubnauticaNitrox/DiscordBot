@@ -20,11 +20,11 @@ public record AutoResponse
     {
         public enum Types
         {
-            [Description("Filter on channel id")]
-            Channel,
-            [Description("Filter on user newishness")]
-            UserJoinTimeSpan,
-            [Description("Filter on word order in sentences written in a message")]
+            [Description("Any one of the following channels")]
+            AnyChannel,
+            [Description("Maximum newishness of a user to this server")]
+            UserJoinAge,
+            [Description("Sentences containing the same individual words and order")]
             MessageWordOrder
         }
 
