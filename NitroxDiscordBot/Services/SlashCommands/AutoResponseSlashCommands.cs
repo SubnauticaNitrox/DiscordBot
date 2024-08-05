@@ -51,7 +51,8 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         if (await db.SaveChangesAsync() > 0)
         {
             await RespondAsync(
-                $"AutoResponse `{ar.Name}` created. Add filters and responses to make it work: /autoresponse add filter ...", ephemeral: true);
+                $"AutoResponse `{ar.Name}` created. Add filters and responses to make it work: /autoresponse add filter ...",
+                ephemeral: true);
         }
     }
 
@@ -117,7 +118,9 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                         sb.Remove(sb.Length - 1, 1);
                         break;
                     case Filter.Types.UserJoinAge:
-                        sb.Append(string.Join(", ", filter.Value.WhereTryParse<string, TimeSpan>(TimeSpan.TryParse).Select(t => t.ToPrettyFormat())));
+                        sb.Append(string.Join(", ",
+                            filter.Value.WhereTryParse<string, TimeSpan>(TimeSpan.TryParse)
+                                .Select(t => t.ToPrettyFormat())));
                         break;
                     default:
                         if (filter.Value.Length > 0)
@@ -141,14 +144,16 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 switch (response.Type)
                 {
                     case Response.Types.MessageUsers:
-                        foreach (IGuildUser user in await bot.GetUsersByIdsAsync(Context.Guild, response.Value.WhereTryParse<string, ulong>(ulong.TryParse).ToArray()))
+                        foreach (IGuildUser user in await bot.GetUsersByIdsAsync(Context.Guild,
+                                     response.Value.WhereTryParse<string, ulong>(ulong.TryParse).ToArray()))
                         {
                             sb.Append(user.Mention).Append(' ');
                         }
                         sb.Remove(sb.Length - 1, 1);
                         break;
                     case Response.Types.MessageRoles:
-                        foreach (SocketRole role in bot.GetRolesByIds(Context.Guild as SocketGuild, response.Value.WhereTryParse<string, ulong>(ulong.TryParse).ToArray()))
+                        foreach (SocketRole role in bot.GetRolesByIds(Context.Guild as SocketGuild,
+                                     response.Value.WhereTryParse<string, ulong>(ulong.TryParse).ToArray()))
                         {
                             sb.Append(role.Mention).Append(' ');
                         }
@@ -173,6 +178,106 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         await RespondAsync(sb.ToString(), ephemeral: true, allowedMentions: AllowedMentions.None);
     }
 
+    [RequireUserPermission(GuildPermission.ManageMessages, Group = "Permission")]
+    [SlashCommand("subscribe", "Subscribe yourself to get notified when an auto response triggers")]
+    public async Task SubscribeAsync(
+        [Summary("name")] [Autocomplete<AutoResponseNameAutoComplete>]
+        string autoResponseName)
+    {
+        AutoResponse ar = await db.AutoResponses
+            .Include(a => a.Responses)
+            .Where(ar => ar.Name == autoResponseName)
+            .FirstOrDefaultAsync();
+        if (ar == null)
+        {
+            await RespondAsync($"No {nameof(AutoResponse)} with the name `{autoResponseName}` was found",
+                ephemeral: true,
+                allowedMentions: AllowedMentions.None);
+            return;
+        }
+        if (ar.Responses.FirstOrDefault(r =>
+                r.Type == Response.Types.MessageUsers && r.Value.Contains(Context.User.Id.ToString())) != null)
+        {
+            await RespondAsync($"You're already subscribed to {nameof(AutoResponse)} `{autoResponseName}`",
+                ephemeral: true,
+                allowedMentions: AllowedMentions.None);
+            return;
+        }
+        Response targetResponse = ar.Responses.FirstOrDefault(r => r.Type == Response.Types.MessageUsers);
+        if (targetResponse == null)
+        {
+            targetResponse = new Response
+            {
+                Type = Response.Types.MessageUsers,
+                Value = [Context.User.Id.ToString()]
+            };
+            ar.Responses.Add(targetResponse);
+        }
+        else
+        {
+            targetResponse.Value = [..targetResponse.Value, Context.User.Id.ToString()];
+        }
+
+        db.Update(ar);
+        if (await db.SaveChangesAsync() > 0)
+        {
+            await RespondAsync($"You've successfully subscribed to {nameof(AutoResponse)} `{autoResponseName}`",
+                ephemeral: true, allowedMentions: AllowedMentions.None);
+        }
+        else
+        {
+            await RespondAsync($"I failed to subscribe you to {nameof(AutoResponse)} `{autoResponseName}`",
+                ephemeral: true, allowedMentions: AllowedMentions.None);
+        }
+    }
+
+    [RequireUserPermission(GuildPermission.ManageMessages, Group = "Permission")]
+    [SlashCommand("unsubscribe", "Unsubscribe yourself from an auto response")]
+    public async Task UnsubscribeAsync(
+        [Summary("name")] [Autocomplete<AutoResponseNameAutoComplete>]
+        string autoResponseName)
+    {
+        AutoResponse ar = await db.AutoResponses
+            .Include(a => a.Responses)
+            .Where(ar => ar.Name == autoResponseName)
+            .FirstOrDefaultAsync();
+        if (ar == null)
+        {
+            await RespondAsync($"No {nameof(AutoResponse)} with the name `{autoResponseName}` was found",
+                ephemeral: true,
+                allowedMentions: AllowedMentions.None);
+            return;
+        }
+        if (ar.Responses.All(r => r.Type == Response.Types.MessageUsers && !r.Value.Contains(Context.User.Id.ToString())))
+        {
+            await RespondAsync($"You already aren't subscribed to {nameof(AutoResponse)} `{autoResponseName}`",
+                ephemeral: true,
+                allowedMentions: AllowedMentions.None);
+            return;
+        }
+        Response targetResponse = ar.Responses.FirstOrDefault(r => r.Type == Response.Types.MessageUsers);
+        if (targetResponse != null)
+        {
+            targetResponse.Value = targetResponse.Value.Except([Context.User.Id.ToString()]).ToArray();
+            if (targetResponse.Value.Length < 1)
+            {
+                db.Remove(targetResponse);
+            }
+        }
+
+        db.Update(ar);
+        if (await db.SaveChangesAsync() > 0)
+        {
+            await RespondAsync($"You've successfully unsubscribed from {nameof(AutoResponse)} `{autoResponseName}`",
+                ephemeral: true, allowedMentions: AllowedMentions.None);
+        }
+        else
+        {
+            await RespondAsync($"I failed to unsubscribe you from {nameof(AutoResponse)} `{autoResponseName}`",
+                ephemeral: true, allowedMentions: AllowedMentions.None);
+        }
+    }
+
     [Group("add", "Add filters or responses to an auto response")]
     public class AutoResponseAdd : NitroxInteractionModule
     {
@@ -191,7 +296,8 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         public async Task AddFilterAsync(
             [Summary("auto-response-name")] [Autocomplete<AutoResponseNameAutoComplete>]
             string autoResponseName,
-            [Summary("type")][Autocomplete<AutoResponseFilterTypesAutoComplete>] string typeName,
+            [Summary("type")] [Autocomplete<AutoResponseFilterTypesAutoComplete>]
+            string typeName,
             [Summary("value")] string value)
         {
             if (!Enum.TryParse(typeName, true, out Filter.Types type))
@@ -204,7 +310,8 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     .FirstOrDefaultAsync();
             if (ar == null)
             {
-                await RespondAsync($"An auto response with the name `{autoResponseName}` was not found", ephemeral: true);
+                await RespondAsync($"An auto response with the name `{autoResponseName}` was not found",
+                    ephemeral: true);
                 return;
             }
             char[] valueSplitChars = type switch
@@ -212,7 +319,8 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 Filter.Types.AnyChannel => [',', ' '],
                 _ => [',']
             };
-            string[] values = value.Split(valueSplitChars, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            string[] values = value.Split(valueSplitChars,
+                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             if (values is null or { Length: 0 })
             {
                 await RespondAsync("Filter value must not be empty", ephemeral: true);
@@ -221,7 +329,9 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             // Validate values are compatible with filter type
             switch (type)
             {
-                case Filter.Types.AnyChannel when values is [_, ..] && values.WhereTryParse<string, ulong>(ulong.TryParse).ToArray() is [_, ..] channelIds:
+                case Filter.Types.AnyChannel when values is [_, ..] &&
+                                                  values.WhereTryParse<string, ulong>(ulong.TryParse).ToArray() is
+                                                      [_, ..] channelIds:
                     foreach (ulong channelId in channelIds)
                     {
                         if (await bot.GetChannelAsync<ITextChannel>(channelId) == null)
@@ -240,7 +350,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     return;
             }
 
-            ar.Filters.Add(new()
+            ar.Filters.Add(new Filter
             {
                 Type = type,
                 Value = values
@@ -256,7 +366,8 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         public async Task AddResponseAsync(
             [Summary("auto-response-name")] [Autocomplete<AutoResponseNameAutoComplete>]
             string autoResponseName,
-            [Summary("type")][Autocomplete<AutoResponseResponseTypesAutoComplete>] string typeName,
+            [Summary("type")] [Autocomplete<AutoResponseResponseTypesAutoComplete>]
+            string typeName,
             [Summary("value")] string value)
         {
             if (!Enum.TryParse(typeName, true, out Response.Types type))
@@ -269,7 +380,8 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     .FirstOrDefaultAsync();
             if (ar == null)
             {
-                await RespondAsync($"An auto response with the name `{autoResponseName}` was not found", ephemeral: true);
+                await RespondAsync($"An auto response with the name `{autoResponseName}` was not found",
+                    ephemeral: true);
                 return;
             }
             char[] valueSplitChars = type switch
@@ -277,7 +389,8 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 Response.Types.MessageRoles or Response.Types.MessageUsers => [',', ' '],
                 _ => [',']
             };
-            string[] values = value.Split(valueSplitChars, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            string[] values = value.Split(valueSplitChars,
+                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             if (values is null or { Length: 0 })
             {
                 await RespondAsync("Response value must not be empty", ephemeral: true);
@@ -287,11 +400,14 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             switch (type)
             {
                 case Response.Types.MessageRoles:
-                    IEnumerable<SocketRole> roles = bot.GetRolesByIds(Context.Guild as SocketGuild, values.WhereTryParse<string, ulong>(ulong.TryParse).ToArray());
+                    IEnumerable<SocketRole> roles = bot.GetRolesByIds(Context.Guild as SocketGuild,
+                        values.WhereTryParse<string, ulong>(ulong.TryParse).ToArray());
                     string[] missingRoles = values.ExceptBy(roles.Select(u => u.Id.ToString()), s => s).ToArray();
                     if (missingRoles.Any())
                     {
-                        await RespondAsync($"The following role ids are missing from this server `{string.Join(", ", missingRoles)}`", ephemeral: true);
+                        await RespondAsync(
+                            $"The following role ids are missing from this server `{string.Join(", ", missingRoles)}`",
+                            ephemeral: true);
                         return;
                     }
                     break;
@@ -301,7 +417,9 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     string[] missingUsers = values.ExceptBy(users.Select(u => u.Id.ToString()), s => s).ToArray();
                     if (missingUsers.Any())
                     {
-                        await RespondAsync($"The following user ids are missing from this server `{string.Join(", ", missingUsers)}`", ephemeral: true);
+                        await RespondAsync(
+                            $"The following user ids are missing from this server `{string.Join(", ", missingUsers)}`",
+                            ephemeral: true);
                         return;
                     }
                     break;
@@ -310,7 +428,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     return;
             }
 
-            ar.Responses.Add(new()
+            ar.Responses.Add(new Response
             {
                 Type = type,
                 Value = values
@@ -318,7 +436,8 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             db.AutoResponses.Update(ar);
             if (await db.SaveChangesAsync() > 0)
             {
-                await RespondAsync($"Response `{type}` has been added to {nameof(AutoResponse)} `{ar.Name}`", ephemeral: true);
+                await RespondAsync($"Response `{type}` has been added to {nameof(AutoResponse)} `{ar.Name}`",
+                    ephemeral: true);
             }
         }
     }
