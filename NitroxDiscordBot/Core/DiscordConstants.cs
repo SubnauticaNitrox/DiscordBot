@@ -1,6 +1,4 @@
-﻿using Discord;
-
-namespace NitroxDiscordBot.Core;
+﻿namespace NitroxDiscordBot.Core;
 
 public static class DiscordConstants
 {
@@ -8,9 +6,4 @@ public static class DiscordConstants
     ///     Used as anchor point for fetching early messages from a Discord channel.
     /// </summary>
     public const ulong EarliestSnowflakeId = 5000000;
-
-    public static readonly AllowedMentions NoMentions = new()
-    {
-        AllowedTypes = AllowedMentionTypes.None
-    };
 }

@@ -110,7 +110,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                                 ITextChannel channel = await bot.GetChannelAsync<ITextChannel>(channelId);
                                 if (channel != null)
                                 {
-                                    sb.Append(channel.Mention).Append(' ');
+                                    sb.Append(channel.GetMentionOrChannelName()).Append(' ');
                                 }
                             }
                         }
@@ -154,7 +154,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             }
         }
 
-        await RespondAsync(sb.ToString(), ephemeral: true, allowedMentions: DiscordConstants.NoMentions);
+        await RespondAsync(sb.ToString(), ephemeral: true, allowedMentions: AllowedMentions.None);
     }
 
     [Group("add", "Add filters or responses to an auto response")]

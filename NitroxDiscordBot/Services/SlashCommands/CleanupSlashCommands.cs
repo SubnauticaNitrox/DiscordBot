@@ -2,7 +2,6 @@
 using Discord;
 using Discord.Interactions;
 using Microsoft.EntityFrameworkCore;
-using NitroxDiscordBot.Core;
 using NitroxDiscordBot.Db;
 using NitroxDiscordBot.Db.Models;
 using NitroxDiscordBot.Services.SlashCommands.Preconditions;
@@ -28,7 +27,7 @@ public class CleanupSlashCommands : InteractionModuleBase
     {
         if (db.Cleanups.Any(d => d.ChannelId == channel.Id))
         {
-            await RespondAsync($"A cleanup schedule already exists for '{channel.Name}'", ephemeral: true);
+            await RespondAsync($"A cleanup schedule already exists for {channel.GetMentionOrChannelName()}", ephemeral: true, allowedMentions: AllowedMentions.None);
             return;
         }
 
@@ -38,11 +37,11 @@ public class CleanupSlashCommands : InteractionModuleBase
         });
         if (await db.SaveChangesAsync() < 1)
         {
-            await RespondAsync($"Failed to make changes to the database. No cleanup schedule was added for channel '{channel.Name}'", ephemeral: true);
+            await RespondAsync($"Failed to make changes to the database. No cleanup schedule was added for {channel.GetMentionOrChannelName()}", ephemeral: true, allowedMentions: AllowedMentions.None);
             return;
         }
 
-        await RespondAsync($"Created cleanup schedule for {channel.Name}", ephemeral: true);
+        await RespondAsync($"Created cleanup schedule for {channel.GetMentionOrChannelName()}", ephemeral: true, allowedMentions: AllowedMentions.None);
     }
 
     [SlashCommand("remove", "Removes cleanup schedules from the given channel")]
@@ -51,11 +50,11 @@ public class CleanupSlashCommands : InteractionModuleBase
         int schedulesDeleted = await db.Cleanups.Where(c => c.ChannelId == channel.Id).ExecuteDeleteAsync();
         if (schedulesDeleted > 0)
         {
-            await RespondAsync($"Removed {schedulesDeleted} cleanup schedules for channel '{channel.Name}'", ephemeral: true);
+            await RespondAsync($"Removed {schedulesDeleted} cleanup schedules for {channel.GetMentionOrChannelName()}", ephemeral: true, allowedMentions: AllowedMentions.None);
         }
         else
         {
-            await RespondAsync($"Nothing to remove. No cleanup schedules for channel '{channel.Name}'", ephemeral: true);
+            await RespondAsync($"Nothing to remove. No cleanup schedules for {channel.GetMentionOrChannelName()}", ephemeral: true, allowedMentions: AllowedMentions.None);
         }
     }
 
@@ -66,17 +65,17 @@ public class CleanupSlashCommands : InteractionModuleBase
         sb.AppendLine();
         await foreach (Cleanup definition in db.Cleanups.AsAsyncEnumerable())
         {
-            ITextChannel channel = await bot.GetChannelAsync<ITextChannel>(definition.ChannelId);
+            IChannel channel = await bot.GetChannelAsync<IChannel>(definition.ChannelId);
             if (channel == null)
             {
                 continue;
             }
             sb.Append("- Channel ")
-                .Append(channel.Mention)
+                .Append(channel.GetMentionOrChannelName())
                 .Append(" cleans up messages older than ")
                 .Append(definition.AgeThreshold.TotalDays)
                 .AppendLine(" days");
         }
-        await RespondAsync(sb.ToString(), ephemeral: true, allowedMentions: DiscordConstants.NoMentions);
+        await RespondAsync(sb.ToString(), ephemeral: true, allowedMentions: AllowedMentions.None);
     }
 }
