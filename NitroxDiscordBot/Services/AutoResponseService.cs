@@ -44,11 +44,6 @@ public class AutoResponseService : DiscordBotHostedService
 
     private async Task ModerateMessageAsync(SocketGuildUser author, SocketUserMessage message)
     {
-        static async Task NotifyModeratorAsync(IGuildUser userToNotify, string responseName, SocketGuildUser authorToReport, SocketUserMessage messageToReport)
-        {
-            await userToNotify.SendMessageAsync($"[{nameof(AutoResponse)} {responseName}] {authorToReport.Mention} said {messageToReport.GetJumpUrl()}:{Environment.NewLine}{messageToReport.Content}");
-        }
-
         foreach (AutoResponse definition in db.AutoResponses
                      .Include(r => r.Filters)
                      .Include(r => r.Responses))
@@ -122,5 +117,18 @@ next:
         }
 
         return true;
+    }
+
+    private async Task NotifyModeratorAsync(IGuildUser userToNotify, string responseName, SocketGuildUser authorToReport, SocketUserMessage messageToReport)
+    {
+        try
+        {
+            await userToNotify.SendMessageAsync(
+                $"[{nameof(AutoResponse)} {responseName}] {authorToReport.Mention} said {messageToReport.GetJumpUrl()}:{Environment.NewLine}{messageToReport.Content}");
+        }
+        catch (Exception ex)
+        {
+            Log.LogError(ex, $"Tried sending DM report about message '{messageToReport.GetJumpUrl()}' to moderator '{userToNotify.Username}' but failed");
+        }
     }
 }
