@@ -32,6 +32,7 @@ public class NitroxBotService : IHostedService, IDisposable
         });
         interactionService = new InteractionService(client, new InteractionServiceConfig
         {
+            DefaultRunMode = Discord.Interactions.RunMode.Async,
             UseCompiledLambda = true
         });
         client.Log += ClientLogReceived;
