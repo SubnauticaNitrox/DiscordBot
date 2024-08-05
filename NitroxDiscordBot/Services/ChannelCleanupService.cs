@@ -14,8 +14,8 @@ namespace NitroxDiscordBot.Services;
 /// </summary>
 public class ChannelCleanupService : DiscordBotHostedService
 {
-    private readonly ResiliencePipeline resilience;
     private readonly BotContext db;
+    private readonly ResiliencePipeline resilience;
 
     /// <summary>
     ///     Gets a list of cleanup tasks mapped to a cleanup definition in the config file. Each config entry should have only
@@ -112,11 +112,14 @@ public class ChannelCleanupService : DiscordBotHostedService
             }
 
             // Check if cleanup definitions indicates that task should run now, keeping track if task already ran.
-            await foreach (Cleanup cleanupDefinition in db.Cleanups.AsAsyncEnumerable().WithCancellation(cancellationToken))
+            await foreach (Cleanup cleanupDefinition in db.Cleanups.AsAsyncEnumerable()
+                               .WithCancellation(cancellationToken))
             {
                 if (cancellationToken.IsCancellationRequested) break;
                 if (!scheduledTasks.TryGetValue(cleanupDefinition, out DateTime scheduledTime))
+                {
                     scheduledTime = AddOrUpdateScheduleForCleanupDefinition(scheduledTasks, cleanupDefinition);
+                }
 
                 // If scheduled time is in the past, queue for immediate run and calc the next occurence.
                 if ((scheduledTime - DateTime.UtcNow).Ticks < 0)
@@ -137,8 +140,7 @@ public class ChannelCleanupService : DiscordBotHostedService
     {
         try
         {
-            await foreach (Cleanup cleanup in workQueue.Reader.ReadAllAsync(
-                               cancellationToken))
+            await foreach (Cleanup cleanup in workQueue.Reader.ReadAllAsync(cancellationToken))
             {
                 await resilience.ExecuteAsync(async (context, ct) =>
                 {

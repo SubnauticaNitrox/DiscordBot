@@ -112,6 +112,7 @@ public class NitroxBotService : IHostedService, IDisposable
         IMessageChannel channel = await GetChannelAsync<IMessageChannel>(channelId);
         if (channel == null)
         {
+            log.LogWarning($"No channel by id {channelId} exists. Please make sure you've configured the bot correctly.");
             return;
         }
 
@@ -339,13 +340,14 @@ public class NitroxBotService : IHostedService, IDisposable
     /// </summary>
     private Task ClientLogReceived(LogMessage logEntry)
     {
-        if (logEntry.Exception is not null)
+        switch (logEntry)
         {
-            log.LogError(logEntry.Exception, "Discord API error");
-        }
-        else
-        {
-            log.LogInformation(logEntry.Message);
+            case { Exception: not null and not OperationCanceledException }:
+                log.LogError(logEntry.Exception, $"{nameof(Discord.Net).ToUpperInvariant()} API error");
+                break;
+            case { Message.Length: > 0 }:
+                log.LogInformation($"{nameof(Discord.Net).ToUpperInvariant()} API: {logEntry.Message}");
+                break;
         }
 
         return Task.CompletedTask;
