@@ -22,7 +22,7 @@ public record AutoResponse
         {
             [Description("Any one of the following channels")]
             AnyChannel,
-            [Description("Maximum newishness of a user to this server")]
+            [Description("User joined not more than this long ago")]
             UserJoinAge,
             [Description("Sentences containing the same individual words and order")]
             MessageWordOrder
