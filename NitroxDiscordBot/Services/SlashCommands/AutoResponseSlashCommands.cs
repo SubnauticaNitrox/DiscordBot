@@ -154,10 +154,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             }
         }
 
-        await RespondAsync(sb.ToString(), ephemeral: true, allowedMentions: new AllowedMentions
-        {
-            AllowedTypes = AllowedMentionTypes.None
-        });
+        await RespondAsync(sb.ToString(), ephemeral: true, allowedMentions: DiscordConstants.NoMentions);
     }
 
     [Group("add", "Add filters or responses to an auto response")]

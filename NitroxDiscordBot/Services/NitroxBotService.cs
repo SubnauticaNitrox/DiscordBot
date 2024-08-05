@@ -21,11 +21,6 @@ public class NitroxBotService : IHostedService, IDisposable
     private readonly InteractionService interactionService;
     public event EventHandler<SocketMessage> MessageReceived;
 
-    /// <summary>
-    ///     Used as anchor point for fetching early messages from a Discord channel.
-    /// </summary>
-    private const ulong EarliestSnowflakeId = 5000000;
-
     public NitroxBotService(IOptionsMonitor<NitroxBotConfig> config, ILogger<NitroxBotService> log, IServiceProvider serviceProvider)
     {
         this.config = config;
@@ -121,7 +116,7 @@ public class NitroxBotService : IHostedService, IDisposable
 
         int count = 0;
         log.LogInformation("Running old messages cleanup on channel '{ChannelName}'", channel.Name);
-        await foreach (IReadOnlyCollection<IMessage> buffer in channel.GetMessagesAsync(EarliestSnowflakeId, Direction.After).WithCancellation(cancellationToken))
+        await foreach (IReadOnlyCollection<IMessage> buffer in channel.GetMessagesAsync(DiscordConstants.EarliestSnowflakeId, Direction.After).WithCancellation(cancellationToken))
         {
             if (buffer == null || buffer.Count < 1)
             {
@@ -297,7 +292,7 @@ public class NitroxBotService : IHostedService, IDisposable
 
     private async Task<IMessage[]> GetMessagesAsync(IMessageChannel channel, int limit = 100, bool sorted = true)
     {
-        IEnumerable<IMessage> messages = await channel.GetMessagesAsync(EarliestSnowflakeId, Direction.After, limit).FlattenAsync();
+        IEnumerable<IMessage> messages = await channel.GetMessagesAsync(DiscordConstants.EarliestSnowflakeId, Direction.After, limit).FlattenAsync();
         if (sorted)
         {
             messages = messages.OrderBy(m => m.Timestamp);

@@ -2,6 +2,7 @@
 using Discord;
 using Discord.Interactions;
 using Microsoft.EntityFrameworkCore;
+using NitroxDiscordBot.Core;
 using NitroxDiscordBot.Db;
 using NitroxDiscordBot.Db.Models;
 using NitroxDiscordBot.Services.SlashCommands.Preconditions;
@@ -41,7 +42,7 @@ public class CleanupSlashCommands : InteractionModuleBase
             return;
         }
 
-        await RespondAsync($"Created cleanup schedule for channel '{channel.Name}'", ephemeral: true);
+        await RespondAsync($"Created cleanup schedule for {channel.Name}", ephemeral: true);
     }
 
     [SlashCommand("remove", "Removes cleanup schedules from the given channel")]
@@ -65,18 +66,17 @@ public class CleanupSlashCommands : InteractionModuleBase
         sb.AppendLine();
         await foreach (Cleanup definition in db.Cleanups.AsAsyncEnumerable())
         {
-            IChannel channel = await bot.GetChannelAsync<IChannel>(definition.ChannelId);
+            ITextChannel channel = await bot.GetChannelAsync<ITextChannel>(definition.ChannelId);
             if (channel == null)
             {
                 continue;
             }
-            sb.Append("- Channel '")
-                .Append(channel.Name)
-                .Append('\'')
+            sb.Append("- Channel ")
+                .Append(channel.Mention)
                 .Append(" cleans up messages older than ")
                 .Append(definition.AgeThreshold.TotalDays)
                 .AppendLine(" days");
         }
-        await RespondAsync(sb.ToString(), ephemeral: true);
+        await RespondAsync(sb.ToString(), ephemeral: true, allowedMentions: DiscordConstants.NoMentions);
     }
 }
