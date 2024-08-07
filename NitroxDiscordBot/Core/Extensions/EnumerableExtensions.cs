@@ -1,17 +1,30 @@
-﻿namespace NitroxDiscordBot.Core.Extensions;
+﻿using System.Globalization;
+
+namespace NitroxDiscordBot.Core.Extensions;
 
 public static class EnumerableExtensions
 {
-    public delegate bool TryFunc<in TSource, TResult>(TSource arg, out TResult result);
-
-    public static IEnumerable<TResult> WhereTryParse<TSource, TResult>(this IEnumerable<TSource> source,
-        TryFunc<TSource, TResult> selector)
+    /// <summary>
+    ///     Tries to parse every item in the source. If the parse fails, the item is skipped.
+    /// </summary>
+    public static IEnumerable<TResult> OfParsable<TResult>(this IEnumerable<string> source)
+        where TResult : ISpanParsable<TResult>
     {
-        foreach (TSource item in source)
+        static bool TryParse(string text, out TResult result)
         {
-            if (selector(item, out TResult r))
+            if (TResult.TryParse(text, CultureInfo.InvariantCulture, out result))
             {
-                yield return r;
+                return true;
+            }
+            result = default;
+            return false;
+        }
+
+        foreach (string item in source)
+        {
+            if (TryParse(item, out TResult result))
+            {
+                yield return result;
             }
         }
     }

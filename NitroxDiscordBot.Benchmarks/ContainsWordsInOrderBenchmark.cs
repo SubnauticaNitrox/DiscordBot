@@ -6,13 +6,14 @@ namespace NitroxDiscordBot.Benchmarks;
 public class ContainsWordsInOrderBenchmark
 {
     [Benchmark(Baseline = true)]
-    public void ContainsWordsInOrder()
+    public void OrdinalIgnoreCase()
     {
-        "Can you tell me the way to the nearest hospital!?".AsSpan().ContainsWordsInOrder("tell hospital nearest", StringComparison.OrdinalIgnoreCase);
+        "Can you tell me the way to the nearest hospital!?".AsSpan()
+            .ContainsWordsInOrder("tell hospital nearest", StringComparison.OrdinalIgnoreCase);
     }
 
     [Benchmark]
-    public void ContainsWordsInOrder_InvariantIgnoreCase()
+    public void InvariantIgnoreCase()
     {
         "Can you tell me the way to the nearest hospital!?".AsSpan().ContainsWordsInOrder("tell hospital nearest");
     }

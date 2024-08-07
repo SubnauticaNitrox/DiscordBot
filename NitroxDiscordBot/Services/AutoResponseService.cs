@@ -11,7 +11,6 @@ namespace NitroxDiscordBot.Services;
 public class AutoResponseService : DiscordBotHostedService
 {
     private readonly BotContext db;
-    private readonly char[] sentenceSplitCharacters = ['.', '!', '?', '"', '`'];
 
     public AutoResponseService(NitroxBotService bot,
         BotContext db,
@@ -56,18 +55,14 @@ public class AutoResponseService : DiscordBotHostedService
                 switch (response.Type)
                 {
                     case Response.Types.MessageRoles:
-                        ulong[] roles = response.Value
-                            .Select(r => ulong.TryParse(r, out ulong roleId) ? roleId : 0).Where(r => r != 0)
-                            .ToArray();
+                        ulong[] roles = response.Value.OfParsable<ulong>().ToArray();
                         foreach (SocketGuildUser user in Bot.GetUsersWithAnyRoles(author.Guild, roles))
                         {
                             await NotifyModeratorAsync(user, definition.Name, author, message);
                         }
                         break;
                     case Response.Types.MessageUsers:
-                        ulong[] userIds = response.Value
-                            .Select(r => ulong.TryParse(r, out ulong userId) ? userId : 0).Where(r => r != 0)
-                            .ToArray();
+                        ulong[] userIds = response.Value.OfParsable<ulong>().ToArray();
                         foreach (IGuildUser user in await Bot.GetUsersByIdsAsync(author.Guild, userIds))
                         {
                             await NotifyModeratorAsync(user, definition.Name, author, message);
@@ -88,7 +83,7 @@ public class AutoResponseService : DiscordBotHostedService
         {
             switch (filter.Type)
             {
-                case Filter.Types.AnyChannel when filter.Value is [_, ..] && filter.Value.WhereTryParse<string, ulong>(ulong.TryParse).ToArray() is [_, ..] channelIds:
+                case Filter.Types.AnyChannel when filter.Value is [_, ..] && filter.Value.OfParsable<ulong>().ToArray() is [_, ..] channelIds:
                     if (!channelIds.Contains(message.Channel.Id)) return false;
                     break;
                 case Filter.Types.UserJoinAge when filter.Value is [{} value] &&
@@ -96,17 +91,7 @@ public class AutoResponseService : DiscordBotHostedService
                     if (DateTimeOffset.UtcNow - author.JoinedAt > valueTimeSpan) return false;
                     break;
                 case Filter.Types.MessageWordOrder when filter.Value is [_, ..] values:
-                    string[] sentences = message.Content.Split(sentenceSplitCharacters,
-                        StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-                    foreach (string sentence in sentences)
-                    {
-                        foreach (string value in values)
-                        {
-                            if (sentence.AsSpan().ContainsWordsInOrder(value)) goto next;
-                        }
-                    }
-
-                    return false;
+                    return message.Content.AsSpan().ContainsSentenceWithWordOrderOfAny(values);
                 default:
                     Log.LogWarning("Unhandled filter type '{FilterType}' with value '{FilterValue}'", filter.Type,
                         filter.Value);

@@ -118,8 +118,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                         sb.Remove(sb.Length - 1, 1);
                         break;
                     case Filter.Types.UserJoinAge:
-                        sb.Append(string.Join(", ",
-                            filter.Value.WhereTryParse<string, TimeSpan>(TimeSpan.TryParse)
+                        sb.Append(string.Join(", ", filter.Value.OfParsable<TimeSpan>()
                                 .Select(t => t.ToPrettyFormat())));
                         break;
                     default:
@@ -145,7 +144,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 {
                     case Response.Types.MessageUsers:
                         foreach (IGuildUser user in await bot.GetUsersByIdsAsync(Context.Guild,
-                                     response.Value.WhereTryParse<string, ulong>(ulong.TryParse).ToArray()))
+                                     response.Value.OfParsable<ulong>().ToArray()))
                         {
                             sb.Append(user.Mention).Append(' ');
                         }
@@ -153,7 +152,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                         break;
                     case Response.Types.MessageRoles:
                         foreach (SocketRole role in bot.GetRolesByIds(Context.Guild as SocketGuild,
-                                     response.Value.WhereTryParse<string, ulong>(ulong.TryParse).ToArray()))
+                                     response.Value.OfParsable<ulong>().ToArray()))
                         {
                             sb.Append(role.Mention).Append(' ');
                         }
@@ -330,7 +329,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             switch (type)
             {
                 case Filter.Types.AnyChannel when values is [_, ..] &&
-                                                  values.WhereTryParse<string, ulong>(ulong.TryParse).ToArray() is
+                                                  values.OfParsable<ulong>().ToArray() is
                                                       [_, ..] channelIds:
                     foreach (ulong channelId in channelIds)
                     {
@@ -401,7 +400,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             {
                 case Response.Types.MessageRoles:
                     IEnumerable<SocketRole> roles = bot.GetRolesByIds(Context.Guild as SocketGuild,
-                        values.WhereTryParse<string, ulong>(ulong.TryParse).ToArray());
+                        values.OfParsable<ulong>().ToArray());
                     string[] missingRoles = values.ExceptBy(roles.Select(u => u.Id.ToString()), s => s).ToArray();
                     if (missingRoles.Any())
                     {
@@ -413,7 +412,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     break;
                 case Response.Types.MessageUsers:
                     List<IGuildUser> users = await bot.GetUsersByIdsAsync(Context.Guild,
-                        values.WhereTryParse<string, ulong>(ulong.TryParse).ToArray());
+                        values.OfParsable<ulong>().ToArray());
                     string[] missingUsers = values.ExceptBy(users.Select(u => u.Id.ToString()), s => s).ToArray();
                     if (missingUsers.Any())
                     {
