@@ -6,11 +6,11 @@ public static class StringExtensions
 {
     public static uint ParseHexToUint(this string hex)
     {
-        uint.TryParse(hex.AsSpan().TrimStart('#'), NumberStyles.HexNumber, null, out var number);
+        uint.TryParse(hex.AsSpan().TrimStart('#'), NumberStyles.HexNumber, null, out uint number);
         return number;
     }
 
-    public static bool ContainsWordsInOrder(this ReadOnlySpan<char> content, ReadOnlySpan<char> words)
+    public static bool ContainsWordsInOrder(this ReadOnlySpan<char> content, ReadOnlySpan<char> words, StringComparison comparison = StringComparison.InvariantCultureIgnoreCase)
     {
         static bool IsWordBoundary(char boundary) => char.IsWhiteSpace(boundary) || char.IsPunctuation(boundary);
 
@@ -23,41 +23,30 @@ public static class StringExtensions
             return true;
         }
         Span<Range> wordRanges = stackalloc Range[words.Trim().Count(' ') + 1];
-        words.Split(wordRanges, " ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        words.Split(wordRanges, ' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
+        int contentSliceStart = 0;
         Span<int> indices = stackalloc int[wordRanges.Length];
         for (int i = 0; i < wordRanges.Length; i++)
         {
             Range wordRange = wordRanges[i];
-            indices[i] = content.IndexOf(words[wordRange], StringComparison.InvariantCultureIgnoreCase);
-            if (indices[i] <= -1) return false;
-            // Test that index at the start/end of a word (not as part of a word).
-            if (indices[i] - 1 > -1 && content[indices[i] - 1] is var start && !IsWordBoundary(start))
+            int index = contentSliceStart + content.Slice(contentSliceStart).IndexOf(words[wordRange], comparison);
+            if (index <= -1) return false;
+            // Previous word should be somewhere before the current word.
+            if (i > 0 && indices[i - 1] >= index) return false;
+            // Test that index is at the start/end of a word (i.e. not somewhere inside it).
+            if (index - 1 > -1 && content[index - 1] is var start && !IsWordBoundary(start))
             {
                 return false;
             }
-            int endOfMatchedWordIndex = indices[i] + words[wordRange].Length;
+            int endOfMatchedWordIndex = index + words[wordRange].Length;
             if (endOfMatchedWordIndex < content.Length && content[endOfMatchedWordIndex] is var end && !IsWordBoundary(end))
             {
                 return false;
             }
-        }
 
-        // Test order of words as expected.
-        int? lastIndex = null;
-        foreach (int index in indices)
-        {
-            if (!lastIndex.HasValue)
-            {
-                lastIndex = index;
-                continue;
-            }
-            if (index < lastIndex)
-            {
-                return false;
-            }
-
-            lastIndex = index;
+            indices[i] = index;
+            contentSliceStart = index + 1;
         }
 
         return true;
