@@ -1,4 +1,5 @@
-﻿using Discord;
+﻿using System.Globalization;
+using Discord;
 using Discord.WebSocket;
 using NitroxDiscordBot.Core;
 
@@ -67,7 +68,23 @@ public class CommandHandlerService : DiscordBotHostedService
         {
             IUserMessage pongMessage = await command.Channel.SendMessageAsync("Pong!", allowedMentions: AllowedMentions.None);
             TimeSpan timeDiff = pongMessage.Timestamp - command.Timestamp;
-            await pongMessage.ModifyAsync(m => m.Content = $"Pong! `{timeDiff.TotalMilliseconds}ms`");
+            await pongMessage.ModifyAsync(m =>
+            {
+                string diffMs = timeDiff.TotalMilliseconds.ToString(CultureInfo.InvariantCulture);
+                m.Content = string.Create(10 + diffMs.Length,
+                    diffMs,
+                    (span, diff) =>
+                    {
+                        "Pong! `".AsSpan().CopyTo(span);
+                        span = span.Slice(7);
+
+                        diff.AsSpan().CopyTo(span);
+                        span = span.Slice(diff.Length);
+
+                        "ms`".AsSpan().CopyTo(span);
+                    }
+                );
+            });
         }
         catch (Exception ex)
         {
