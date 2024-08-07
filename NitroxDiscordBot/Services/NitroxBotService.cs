@@ -342,10 +342,10 @@ public class NitroxBotService : IHostedService, IDisposable
         switch (logEntry)
         {
             case { Exception: not null and not OperationCanceledException }:
-                log.LogError(logEntry.Exception, $"{nameof(Discord.Net).ToUpperInvariant()} API error");
+                log.LogError(logEntry.Exception, $"[{nameof(Discord)}.{nameof(Discord.Net).ToUpperInvariant()}] error");
                 break;
             case { Message.Length: > 0 }:
-                log.LogInformation($"{nameof(Discord.Net).ToUpperInvariant()} API: {logEntry.Message}");
+                log.LogInformation($"[{nameof(Discord)}.{nameof(Discord.Net).ToUpperInvariant()}]: {logEntry.Message}");
                 break;
         }
 
