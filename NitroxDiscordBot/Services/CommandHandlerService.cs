@@ -54,7 +54,7 @@ public class CommandHandlerService : DiscordBotHostedService
                 {
                     if (t is { IsFaulted: true, Exception: Exception ex })
                     {
-                        Log.LogError(ex, $"Error while running {CommandPrefix}{PingCommandName} command");
+                        Log.CommandError(ex, message.Content, message.Author.Id, message.Author.Username);
                     }
                 });
                 break;
@@ -71,8 +71,7 @@ public class CommandHandlerService : DiscordBotHostedService
         }
         catch (Exception ex)
         {
-            Log.LogError(ex, "Error while handling command '{MessageContent}' by user: '{MessageAuthor}'",
-                command.CleanContent, command.Author);
+            Log.CommandError(ex, command.CleanContent, command.Author.Id, command.Author.Username);
         }
     }
 

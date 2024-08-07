@@ -63,7 +63,7 @@ public class MotdService : DiscordBotHostedService
                         .WithColor(message.Color.ParseHexToUint())
                         .WithFields(message.Fields?.Select(f => new EmbedFieldBuilder().WithName(f.Name).WithValue(f.Content).WithIsInline(f.IsInline)) ?? []);
                     await Bot.CreateOrUpdateMessage(motd.ChannelId, index, embed.Build());
-                    Log.LogInformation("Added/updated MOTD in channel #{ChannelId} at index {Index}", motd.ChannelId, index);
+                    Log.MotdChanged(index, motd.ChannelId);
                     index++;
                 }
             }

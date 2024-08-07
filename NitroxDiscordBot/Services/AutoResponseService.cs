@@ -49,7 +49,7 @@ public class AutoResponseService : DiscordBotHostedService
         {
             if (!MatchesFilters(definition.Filters, author, message)) continue;
 
-            Log.LogInformation($"{nameof(AutoResponse)} '{{AutoResponseName}}' triggered for message {{MessageUrl}} by user '{{DiscordUsername}}' with user id {{DiscordUserId}}", definition.Name, message.GetJumpUrl(), author.Username, author.Id);
+            Log.AutoResponseTriggered(definition.Name, message.GetJumpUrl(), author.Username, author.Id);
             await foreach (Response response in definition.Responses.ToAsyncEnumerable())
             {
                 switch (response.Type)
@@ -69,8 +69,7 @@ public class AutoResponseService : DiscordBotHostedService
                         }
                         break;
                     default:
-                        Log.LogWarning("Unhandled response type '{ResponseType}' with value '{ResponseValue}'", response.Type,
-                            response.Value);
+                        Log.UnhandledResponseType(response.Type, response.Value);
                         break;
                 }
             }
@@ -93,8 +92,7 @@ public class AutoResponseService : DiscordBotHostedService
                 case Filter.Types.MessageWordOrder when filter.Value is [_, ..] values:
                     return message.Content.AsSpan().ContainsSentenceWithWordOrderOfAny(values);
                 default:
-                    Log.LogWarning("Unhandled filter type '{FilterType}' with value '{FilterValue}'", filter.Type,
-                        filter.Value);
+                    Log.UnhandledFilterType(filter.Type, filter.Value);
                     break;
             }
 
@@ -114,7 +112,7 @@ next:
         }
         catch (Exception ex)
         {
-            Log.LogError(ex, "Tried sending DM report about message '{MessageUrl}' to moderator '{DiscordUsername}' but failed", messageToReport.GetJumpUrl(), userToNotify.Username);
+            Log.DmReportError(ex, messageToReport.GetJumpUrl(), userToNotify.Username);
         }
     }
 }

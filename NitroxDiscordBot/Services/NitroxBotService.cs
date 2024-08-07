@@ -76,7 +76,7 @@ public class NitroxBotService : IHostedService, IDisposable
             }
             catch (Exception ex)
             {
-                log.LogError(ex, $"Error occurred handling interaction from user {{DiscordUserId}}: '{{DiscordUsername}}'", interaction.User.Id, interaction.User.Username);
+                log.UserInteractionError(ex, interaction.User.Id, interaction.User.Username);
             }
         };
     }
@@ -111,12 +111,11 @@ public class NitroxBotService : IHostedService, IDisposable
         IMessageChannel channel = await GetChannelAsync<IMessageChannel>(channelId);
         if (channel == null)
         {
-            log.LogWarning("No channel by id {ChannelId} exists. Please make sure you've configured the bot correctly.", channelId);
             return;
         }
 
         int count = 0;
-        log.LogInformation("Running old messages cleanup on channel '{ChannelName}'", channel.Name);
+        log.StartingChannelCleanup(channelId, channel.Name);
         await foreach (IReadOnlyCollection<IMessage> buffer in channel.GetMessagesAsync(DiscordConstants.EarliestSnowflakeId, Direction.After).WithCancellation(cancellationToken))
         {
             if (buffer == null || buffer.Count < 1)
@@ -134,7 +133,7 @@ public class NitroxBotService : IHostedService, IDisposable
                 {
                     string messagesSummary = string.Join(Environment.NewLine,
                         messagesToBulkDelete.Select(m => $@"{m.Timestamp}:{Environment.NewLine}{m.Content.Replace("\n", "\t" + Environment.NewLine)}"));
-                    log.LogInformation("Deleting messages:{NewLine}{MessagesContent}", Environment.NewLine, messagesSummary);
+                    log.BulkDeletingMessages(messagesSummary);
                     await textChannel.DeleteMessagesAsync(messagesToBulkDelete);
                     count += messagesToBulkDelete.Length;
 
@@ -147,7 +146,7 @@ public class NitroxBotService : IHostedService, IDisposable
             {
                 if (message.Timestamp + ageThreshold < DateTimeOffset.UtcNow)
                 {
-                    log.LogInformation("Deleting message: '{MessageContent}' with timestamp: {MessageTimestamp}", message.Content, message.Timestamp);
+                    log.DeletingMessage(message.Content, message.Timestamp);
                     await message.DeleteAsync();
                     count++;
                 }
@@ -167,11 +166,11 @@ public class NitroxBotService : IHostedService, IDisposable
 
         if (count > 0)
         {
-            log.LogInformation("Deleted {Count} message(s) older than {Age} from channel '{ChannelName}'", count, ageThreshold, channel.Name);
+            log.CleanupSummary(count, ageThreshold, channel.Name);
         }
         else
         {
-            log.LogInformation("Nothing needed to be deleted from channel '{ChannelName}'", channel.Name);
+            log.CleanupDidNothingSummary(channel.Name);
         }
     }
 
@@ -197,8 +196,7 @@ public class NitroxBotService : IHostedService, IDisposable
         // If author of current message is different, we can't edit it.
         if (messages[index].Author.Id != client.CurrentUser?.Id)
         {
-            log.LogError("Unable to modify message at index {Index} because it is authored by another user: '{AuthorUsername}' ({AuthorId})", index,
-                messages[index].Author.Username, messages[index].Author.Id);
+            log.UnableToModifyMessageByDifferentAuthor(index, messages[index].Author.Id, messages[index].Author.Username);
             return;
         }
 
@@ -306,7 +304,7 @@ public class NitroxBotService : IHostedService, IDisposable
         T channel = await client.GetChannelAsync(channelId) as T;
         if (channel == null)
         {
-            log.LogWarning("Couldn't find channel of type {ChannelType} with id {ChannelId}", typeof(T).Name, channelId);
+            log.ChannelNotFound(typeof(T), channelId);
         }
         return channel;
     }
