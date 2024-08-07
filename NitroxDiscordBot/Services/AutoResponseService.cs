@@ -102,7 +102,7 @@ public class AutoResponseService : DiscordBotHostedService
                     {
                         foreach (string value in values)
                         {
-                            if (sentence.ContainsWordsInOrder(value)) goto next;
+                            if (sentence.AsSpan().ContainsWordsInOrder(value)) goto next;
                         }
                     }
 

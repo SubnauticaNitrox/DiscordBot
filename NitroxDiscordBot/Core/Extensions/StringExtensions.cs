@@ -10,19 +10,19 @@ public static class StringExtensions
         return number;
     }
 
-    public static bool ContainsWordsInOrder(this string content, ReadOnlySpan<char> words) => content.AsSpan().ContainsWordsInOrder(words);
-
     public static bool ContainsWordsInOrder(this ReadOnlySpan<char> content, ReadOnlySpan<char> words)
     {
+        static bool IsWordBoundary(char boundary) => char.IsWhiteSpace(boundary) || char.IsPunctuation(boundary);
+
         if (content.IsEmpty)
         {
-            return false;
+            return words.Trim().IsEmpty;
         }
         if (words.Trim().IsEmpty)
         {
-            return false;
+            return true;
         }
-        Span<Range> wordRanges = new Range[words.Trim().Count(' ') + 1];
+        Span<Range> wordRanges = stackalloc Range[words.Trim().Count(' ') + 1];
         words.Split(wordRanges, " ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
         Span<int> indices = stackalloc int[wordRanges.Length];
@@ -32,7 +32,12 @@ public static class StringExtensions
             indices[i] = content.IndexOf(words[wordRange], StringComparison.InvariantCultureIgnoreCase);
             if (indices[i] <= -1) return false;
             // Test that index at the start/end of a word (not as part of a word).
-            if ((indices[i] - 1 > -1 && content[indices[i] - 1] != ' ') || (indices[i] + words[wordRange].Length < content.Length && content[indices[i] + words[wordRange].Length] != ' '))
+            if (indices[i] - 1 > -1 && content[indices[i] - 1] is var start && !IsWordBoundary(start))
+            {
+                return false;
+            }
+            int endOfMatchedWordIndex = indices[i] + words[wordRange].Length;
+            if (endOfMatchedWordIndex < content.Length && content[endOfMatchedWordIndex] is var end && !IsWordBoundary(end))
             {
                 return false;
             }
