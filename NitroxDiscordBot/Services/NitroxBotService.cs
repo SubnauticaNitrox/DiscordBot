@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using Discord;
-using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Options;
@@ -32,7 +31,7 @@ public class NitroxBotService : IHostedService, IDisposable
         });
         interactionService = new InteractionService(client, new InteractionServiceConfig
         {
-            DefaultRunMode = Discord.Interactions.RunMode.Async,
+            DefaultRunMode = RunMode.Async,
             UseCompiledLambda = true
         });
         client.Log += ClientLogReceived;
@@ -362,10 +361,5 @@ public class NitroxBotService : IHostedService, IDisposable
     protected virtual void OnMessageReceived(SocketMessage e)
     {
         MessageReceived?.Invoke(this, e);
-    }
-
-    public ICommandContext CreateCommandContext(SocketUserMessage message)
-    {
-        return new SocketCommandContext(client, message);
     }
 }

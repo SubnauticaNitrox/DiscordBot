@@ -1,62 +1,96 @@
-﻿using Discord.Commands;
+﻿using Discord;
 using Discord.WebSocket;
 using NitroxDiscordBot.Core;
-using NitroxDiscordBot.Services.Commands;
 
 namespace NitroxDiscordBot.Services;
 
+/// <summary>
+///     Legacy command handler service just for the ?ping command.
+/// </summary>
 public class CommandHandlerService : DiscordBotHostedService
 {
-    private readonly CommandService commands;
-    private readonly IServiceProvider serviceProvider;
+    private const char CommandPrefix = '?';
+    private const string PingCommandName = "ping";
 
-    public CommandHandlerService(NitroxBotService bot, ILogger<CommandHandlerService> log,
-        IServiceProvider serviceProvider) : base(bot, log)
+    public CommandHandlerService(NitroxBotService bot,
+        ILogger<CommandHandlerService> log) : base(bot, log)
     {
-        this.serviceProvider = serviceProvider;
-        commands = new CommandService();
     }
 
-    public override async Task StartAsync(CancellationToken cancellationToken)
+    public override Task StartAsync(CancellationToken cancellationToken)
     {
         Bot.MessageReceived += BotOnMessageReceived;
-        await commands.AddModuleAsync<InfoCommandModule>(serviceProvider);
-        Log.LogInformation("Now listening for Discord user commands");
+        return Task.CompletedTask;
     }
 
-    public override async Task StopAsync(CancellationToken cancellationToken)
+    public override Task StopAsync(CancellationToken cancellationToken)
     {
         Bot.MessageReceived -= BotOnMessageReceived;
-        await commands.RemoveModuleAsync<InfoCommandModule>();
+        return Task.CompletedTask;
     }
 
-    private async void BotOnMessageReceived(object sender, SocketMessage rawMessage)
+    private void BotOnMessageReceived(object sender, SocketMessage message)
     {
-        if (rawMessage is not SocketUserMessage message)
+        if (message is not { Author: SocketGuildUser author } || author.IsBot)
+        {
+            return;
+        }
+        // Only allow some kind of moderator to use commands.
+        if (!author.GuildPermissions.ManageMessages)
         {
             return;
         }
 
-        int argumentPos = 0;
-        if (!message.HasCharPrefix('?', ref argumentPos) || message.HasMentionPrefix(Bot.User, ref argumentPos) ||
-            message.Author.IsBot)
-        {
-            return;
-        }
+        // Parse the command name and lower-case it.
+        ReadOnlySpan<char> messyCommandName = GetCommandNamePartFromMessageContent(message.Content);
+        Span<char> commandName = messyCommandName.Length <= byte.MaxValue ? stackalloc char[messyCommandName.Length] : new char[messyCommandName.Length];
+        messyCommandName.ToLowerInvariant(commandName);
 
+        // Lookup command action for the command name.
+        switch (commandName)
+        {
+            case PingCommandName:
+                _ = PingAsync(message).ContinueWith(t =>
+                {
+                    if (t is { IsFaulted: true, Exception: Exception ex })
+                    {
+                        Log.LogError(ex, $"Error while running {CommandPrefix}{PingCommandName} command");
+                    }
+                });
+                break;
+        }
+    }
+
+    private async Task PingAsync(IMessage command)
+    {
         try
         {
-            await HandleMessageAsCommandAsync(message, argumentPos);
+            IUserMessage pongMessage = await command.Channel.SendMessageAsync("Pong!", allowedMentions: AllowedMentions.None);
+            TimeSpan timeDiff = pongMessage.Timestamp - command.Timestamp;
+            await pongMessage.ModifyAsync(m => m.Content = $"Pong! `{timeDiff.TotalMilliseconds}ms`");
         }
         catch (Exception ex)
         {
             Log.LogError(ex, "Error while handling command '{MessageContent}' by user: '{MessageAuthor}'",
-                message.CleanContent, message.Author);
+                command.CleanContent, command.Author);
         }
     }
 
-    private async Task HandleMessageAsCommandAsync(SocketUserMessage message, int argumentPosition)
+    private ReadOnlySpan<char> GetCommandNamePartFromMessageContent(ReadOnlySpan<char> content)
     {
-        await commands.ExecuteAsync(Bot.CreateCommandContext(message), argumentPosition, serviceProvider);
+        if (content is { Length: <= 1 } || content[0] != CommandPrefix || content[1] == ' ')
+        {
+            return [];
+        }
+        ReadOnlySpan<char> messyCommandName = content.Slice(1).Trim();
+        if (messyCommandName.IsEmpty)
+        {
+            return [];
+        }
+        if (messyCommandName.IndexOf(' ') is var spaceIndex and >= 0)
+        {
+            messyCommandName = messyCommandName.Slice(0, spaceIndex);
+        }
+        return messyCommandName;
     }
 }
