@@ -50,7 +50,7 @@ public class AutoResponseService : DiscordBotHostedService
         {
             if (!MatchesFilters(definition.Filters, author, message)) continue;
 
-            Log.LogInformation($"{nameof(AutoResponse)} '{definition.Name}' triggered for message {message.GetJumpUrl()} by user '{author.Username}' with user id {author.Id}");
+            Log.LogInformation($"{nameof(AutoResponse)} '{{AutoResponseName}}' triggered for message {{MessageUrl}} by user '{{DiscordUsername}}' with user id {{DiscordUserId}}", definition.Name, message.GetJumpUrl(), author.Username, author.Id);
             await foreach (Response response in definition.Responses.ToAsyncEnumerable())
             {
                 switch (response.Type)
@@ -129,7 +129,7 @@ next:
         }
         catch (Exception ex)
         {
-            Log.LogError(ex, $"Tried sending DM report about message '{messageToReport.GetJumpUrl()}' to moderator '{userToNotify.Username}' but failed");
+            Log.LogError(ex, "Tried sending DM report about message '{MessageUrl}' to moderator '{DiscordUsername}' but failed", messageToReport.GetJumpUrl(), userToNotify.Username);
         }
     }
 }

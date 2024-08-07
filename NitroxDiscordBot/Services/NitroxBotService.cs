@@ -76,7 +76,7 @@ public class NitroxBotService : IHostedService, IDisposable
             }
             catch (Exception ex)
             {
-                log.LogError(ex, $"Error occurred handling interaction from user {interaction.User.Id}: '{interaction.User.Username}'");
+                log.LogError(ex, $"Error occurred handling interaction from user {{DiscordUserId}}: '{{DiscordUsername}}'", interaction.User.Id, interaction.User.Username);
             }
         };
     }
@@ -111,7 +111,7 @@ public class NitroxBotService : IHostedService, IDisposable
         IMessageChannel channel = await GetChannelAsync<IMessageChannel>(channelId);
         if (channel == null)
         {
-            log.LogWarning($"No channel by id {channelId} exists. Please make sure you've configured the bot correctly.");
+            log.LogWarning("No channel by id {ChannelId} exists. Please make sure you've configured the bot correctly.", channelId);
             return;
         }
 
