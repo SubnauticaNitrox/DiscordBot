@@ -45,6 +45,14 @@ public static partial class LoggerExtensions
     [LoggerMessage(LogLevel.Warning, Message = "No channel of type {ChannelType} with id {ChannelId} exists. Please make sure you've configured the bot correctly.")]
     public static partial void ChannelNotFound(this ILogger logger, Type channelType, ulong channelId);
 
+    [LoggerMessage(LogLevel.Warning,
+        Message =
+            "Bot was attempted to be added to guild {GuildName} with id {GuildId} but this bot is limited to guild {BotGuildId}")]
+    public static partial void UnexpectedBotJoinGuildAttempt(this ILogger logger,
+        string guildName,
+        ulong guildId,
+        ulong botGuildId);
+
     [LoggerMessage(LogLevel.Error, Message = "Unable to modify message at index {Index} because it is authored by another user: '{DiscordUsername}' ({DiscordUserId})")]
     public static partial void UnableToModifyMessageByDifferentAuthor(this ILogger logger,
         int index,

@@ -37,6 +37,7 @@ public class NitroxBotService : IHostedService, IDisposable
         });
         client.Log += ClientLogReceived;
         client.Ready += ClientOnReady;
+        client.JoinedGuild += ClientOnJoinedGuild;
         client.MessageReceived += BotOnMessageReceived;
         client.ButtonExecuted += ClientOnComponentInteraction;
         client.SelectMenuExecuted += ClientOnComponentInteraction;
@@ -50,6 +51,16 @@ public class NitroxBotService : IHostedService, IDisposable
             }
             return modal.DeferAsync(true);
         };
+    }
+
+    private async Task ClientOnJoinedGuild(SocketGuild guild)
+    {
+        if (guild.Id != config.CurrentValue.GuildId)
+        {
+            log.UnexpectedBotJoinGuildAttempt(guild.Name, guild.Id, config.CurrentValue.GuildId);
+            return;
+        }
+        await interactionService.RegisterCommandsToGuildAsync(guild.Id);
     }
 
     public bool IsConnected => client.ConnectionState == ConnectionState.Connected;
@@ -104,9 +115,14 @@ public class NitroxBotService : IHostedService, IDisposable
         };
     }
 
-    private Task BotOnMessageReceived(SocketMessage arg)
+    private Task BotOnMessageReceived(SocketMessage message)
     {
-        OnMessageReceived(arg);
+        // Only handle messages from the expected guild (aka Discord server).
+        if (message.GetGuildId() != config.CurrentValue.GuildId)
+        {
+            return Task.CompletedTask;
+        }
+        OnMessageReceived(message);
         return Task.CompletedTask;
     }
 
@@ -283,29 +299,6 @@ public class NitroxBotService : IHostedService, IDisposable
             }
         }
         return users;
-    }
-
-    public IEnumerable<SocketGuildUser> GetUsersWithPermissions(SocketGuild guild,
-        Func<GuildPermissions, bool> predicate)
-    {
-        Dictionary<ulong, SocketGuildUser> users = [];
-        if (predicate(guild.Owner.GuildPermissions))
-        {
-            users[guild.Owner.Id] = guild.Owner;
-        }
-
-        foreach (SocketRole role in guild.Roles)
-        {
-            if (predicate(role.Permissions))
-            {
-                foreach (SocketGuildUser user in role.Members)
-                {
-                    users[user.Id] = user;
-                }
-            }
-        }
-
-        return users.Values;
     }
 
     private async Task<IMessage[]> GetMessagesAsync(IMessageChannel channel, int limit = 100, bool sorted = true)
