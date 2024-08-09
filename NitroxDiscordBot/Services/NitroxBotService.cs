@@ -13,14 +13,15 @@ namespace NitroxDiscordBot.Services;
 /// </summary>
 public class NitroxBotService : IHostedService, IDisposable
 {
-    private readonly ILogger log;
     private readonly DiscordSocketClient client;
     private readonly IOptionsMonitor<NitroxBotConfig> config;
-    private readonly IServiceProvider serviceProvider;
     private readonly InteractionService interactionService;
-    public event EventHandler<SocketMessage> MessageReceived;
+    private readonly ILogger log;
+    private readonly IServiceProvider serviceProvider;
 
-    public NitroxBotService(IOptionsMonitor<NitroxBotConfig> config, ILogger<NitroxBotService> log, IServiceProvider serviceProvider)
+    public NitroxBotService(IOptionsMonitor<NitroxBotConfig> config,
+        ILogger<NitroxBotService> log,
+        IServiceProvider serviceProvider)
     {
         this.config = config;
         this.log = log;
@@ -50,6 +51,28 @@ public class NitroxBotService : IHostedService, IDisposable
             return modal.DeferAsync(true);
         };
     }
+
+    public bool IsConnected => client.ConnectionState == ConnectionState.Connected;
+
+    public void Dispose()
+    {
+        client.Log -= ClientLogReceived;
+        client.Dispose();
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        await client.LoginAsync(TokenType.Bot, config.CurrentValue.Token);
+        await client.StartAsync();
+        await WaitForReadyAsync(cancellationToken);
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await client.StopAsync();
+    }
+
+    public event EventHandler<SocketMessage> MessageReceived;
 
     private Task ClientOnComponentInteraction(SocketMessageComponent component)
     {
@@ -87,19 +110,9 @@ public class NitroxBotService : IHostedService, IDisposable
         return Task.CompletedTask;
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        await client.LoginAsync(TokenType.Bot, config.CurrentValue.Token);
-        await client.StartAsync();
-        await WaitForReadyAsync(cancellationToken);
-    }
-
-    public async Task StopAsync(CancellationToken cancellationToken)
-    {
-        await client.StopAsync();
-    }
-
-    public async Task DeleteOldMessagesAsync(ulong channelId, TimeSpan ageThreshold, CancellationToken cancellationToken)
+    public async Task DeleteOldMessagesAsync(ulong channelId,
+        TimeSpan ageThreshold,
+        CancellationToken cancellationToken)
     {
         static bool IsSuitableForBulkDelete(DateTimeOffset timestamp, TimeSpan ageThreshold)
         {
@@ -116,7 +129,9 @@ public class NitroxBotService : IHostedService, IDisposable
 
         int count = 0;
         log.StartingChannelCleanup(channelId, channel.Name);
-        await foreach (IReadOnlyCollection<IMessage> buffer in channel.GetMessagesAsync(DiscordConstants.EarliestSnowflakeId, Direction.After).WithCancellation(cancellationToken))
+        await foreach (IReadOnlyCollection<IMessage> buffer in channel
+                           .GetMessagesAsync(DiscordConstants.EarliestSnowflakeId, Direction.After)
+                           .WithCancellation(cancellationToken))
         {
             if (buffer == null || buffer.Count < 1)
             {
@@ -128,11 +143,13 @@ public class NitroxBotService : IHostedService, IDisposable
             // 1. If channel supports bulk delete, do this first.
             if (channel is ITextChannel textChannel)
             {
-                IMessage[] messagesToBulkDelete = chronologicalMessages.TakeWhile(m => IsSuitableForBulkDelete(m.Timestamp, ageThreshold)).ToArray();
+                IMessage[] messagesToBulkDelete = chronologicalMessages
+                    .TakeWhile(m => IsSuitableForBulkDelete(m.Timestamp, ageThreshold)).ToArray();
                 if (messagesToBulkDelete.Length > 0)
                 {
                     string messagesSummary = string.Join(Environment.NewLine,
-                        messagesToBulkDelete.Select(m => $@"{m.Timestamp}:{Environment.NewLine}{m.Content.Replace("\n", "\t" + Environment.NewLine)}"));
+                        messagesToBulkDelete.Select(m =>
+                            $@"{m.Timestamp}:{Environment.NewLine}{m.Content.Replace("\n", "\t" + Environment.NewLine)}"));
                     log.BulkDeletingMessages(messagesSummary);
                     await textChannel.DeleteMessagesAsync(messagesToBulkDelete);
                     count += messagesToBulkDelete.Length;
@@ -196,7 +213,8 @@ public class NitroxBotService : IHostedService, IDisposable
         // If author of current message is different, we can't edit it.
         if (messages[index].Author.Id != client.CurrentUser?.Id)
         {
-            log.UnableToModifyMessageByDifferentAuthor(index, messages[index].Author.Id, messages[index].Author.Username);
+            log.UnableToModifyMessageByDifferentAuthor(index, messages[index].Author.Id,
+                messages[index].Author.Username);
             return;
         }
 
@@ -258,7 +276,7 @@ public class NitroxBotService : IHostedService, IDisposable
         List<IGuildUser> users = [];
         foreach (ulong userId in userIds)
         {
-            IGuildUser user = await guild.GetUserAsync(userId, CacheMode.AllowDownload);
+            IGuildUser user = await guild.GetUserAsync(userId);
             if (user != null)
             {
                 users.Add(user);
@@ -267,7 +285,8 @@ public class NitroxBotService : IHostedService, IDisposable
         return users;
     }
 
-    public IEnumerable<SocketGuildUser> GetUsersWithPermissions(SocketGuild guild, Func<GuildPermissions, bool> predicate)
+    public IEnumerable<SocketGuildUser> GetUsersWithPermissions(SocketGuild guild,
+        Func<GuildPermissions, bool> predicate)
     {
         Dictionary<ulong, SocketGuildUser> users = [];
         if (predicate(guild.Owner.GuildPermissions))
@@ -291,7 +310,8 @@ public class NitroxBotService : IHostedService, IDisposable
 
     private async Task<IMessage[]> GetMessagesAsync(IMessageChannel channel, int limit = 100, bool sorted = true)
     {
-        IEnumerable<IMessage> messages = await channel.GetMessagesAsync(DiscordConstants.EarliestSnowflakeId, Direction.After, limit).FlattenAsync();
+        IEnumerable<IMessage> messages = await channel
+            .GetMessagesAsync(DiscordConstants.EarliestSnowflakeId, Direction.After, limit).FlattenAsync();
         if (sorted)
         {
             messages = messages.OrderBy(m => m.Timestamp);
@@ -302,10 +322,7 @@ public class NitroxBotService : IHostedService, IDisposable
     public async Task<T> GetChannelAsync<T>(ulong channelId) where T : class, IChannel
     {
         T channel = await client.GetChannelAsync(channelId) as T;
-        if (channel == null)
-        {
-            log.ChannelNotFound(typeof(T), channelId);
-        }
+        if (channel == null) log.ChannelNotFound(typeof(T), channelId);
         return channel;
     }
 
@@ -325,13 +342,6 @@ public class NitroxBotService : IHostedService, IDisposable
         }
     }
 
-    public bool IsConnected => client.ConnectionState == ConnectionState.Connected;
-
-    /// <summary>
-    ///     The "user" account that is controlled by this bot.
-    /// </summary>
-    public IUser User => client.CurrentUser;
-
     /// <summary>
     ///     Handler that receives log messages from the Discord client API.
     /// </summary>
@@ -348,12 +358,6 @@ public class NitroxBotService : IHostedService, IDisposable
         }
 
         return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        client.Log -= ClientLogReceived;
-        client.Dispose();
     }
 
     protected virtual void OnMessageReceived(SocketMessage e)

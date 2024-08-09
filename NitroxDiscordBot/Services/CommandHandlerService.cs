@@ -32,12 +32,7 @@ public class CommandHandlerService : DiscordBotHostedService
 
     private void BotOnMessageReceived(object sender, SocketMessage message)
     {
-        if (message is not { Author: SocketGuildUser author } || author.IsBot)
-        {
-            return;
-        }
-        // Only allow some kind of moderator to use commands.
-        if (!author.GuildPermissions.ManageMessages)
+        if (message is not { Author: SocketGuildUser { IsBot: false, GuildPermissions.ManageMessages: true } })
         {
             return;
         }

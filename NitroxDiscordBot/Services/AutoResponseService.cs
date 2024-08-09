@@ -32,16 +32,17 @@ public class AutoResponseService : DiscordBotHostedService
         return Task.CompletedTask;
     }
 
-    private async void BotOnMessageReceived(object sender, SocketMessage rawMessage)
+    private async void BotOnMessageReceived(object sender, SocketMessage message)
     {
-        if (rawMessage is not SocketUserMessage message) return;
-        if (message.Author.IsBot) return;
-        if (message.Author is not SocketGuildUser author) return;
+        if (message is not { Author: SocketGuildUser { IsBot: false } author })
+        {
+            return;
+        }
 
         await ModerateMessageAsync(author, message);
     }
 
-    private async Task ModerateMessageAsync(SocketGuildUser author, SocketUserMessage message)
+    private async Task ModerateMessageAsync(SocketGuildUser author, SocketMessage message)
     {
         foreach (AutoResponse definition in db.AutoResponses
                      .Include(r => r.Filters)
@@ -76,7 +77,7 @@ public class AutoResponseService : DiscordBotHostedService
         }
     }
 
-    private bool MatchesFilters(IEnumerable<Filter> filters, SocketGuildUser author, SocketUserMessage message)
+    private bool MatchesFilters(IEnumerable<Filter> filters, SocketGuildUser author, SocketMessage message)
     {
         foreach (Filter filter in filters)
         {
@@ -103,7 +104,7 @@ next:
         return true;
     }
 
-    private async Task NotifyModeratorAsync(IGuildUser userToNotify, string responseName, SocketGuildUser authorToReport, SocketUserMessage messageToReport)
+    private async Task NotifyModeratorAsync(IGuildUser userToNotify, string responseName, SocketGuildUser authorToReport, SocketMessage messageToReport)
     {
         try
         {

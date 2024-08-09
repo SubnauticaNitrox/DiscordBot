@@ -32,7 +32,8 @@ services.Configure<HostOptions>(options =>
     options.ServicesStopConcurrently = true;
 });
 services.AddLogging(opt => opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff "));
-services.AddTransient<BotContext>();
+// Don't use Scoped lifetime for DbContext as the services are singleton, not Scoped/Transient.
+services.AddDbContext<BotContext>(contextLifetime: ServiceLifetime.Transient, optionsLifetime: ServiceLifetime.Transient);
 services.AddHostedSingleton<NitroxBotService>();
 services.AddHostedSingleton<CommandHandlerService>();
 services.AddHostedSingleton<AutoResponseService>();
