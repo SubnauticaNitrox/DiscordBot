@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NitroxDiscordBot.Configuration;
 using NitroxDiscordBot.Db;
 using NitroxDiscordBot.Services;
+using ZiggyCreatures.Caching.Fusion;
 
 if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") is null)
 {
@@ -31,9 +32,24 @@ services.Configure<HostOptions>(options =>
     options.ServicesStartConcurrently = true;
     options.ServicesStopConcurrently = true;
 });
-services.AddLogging(opt => opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff "));
+services.AddLogging(opt =>
+{
+    opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff ");
+    if (builder.Environment.IsDevelopment())
+    {
+        opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", LogLevel.Information);
+    }
+});
+services.AddFusionCache()
+    .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5));
 // Don't use Scoped lifetime for DbContext as the services are singleton, not Scoped/Transient.
-services.AddDbContext<BotContext>(contextLifetime: ServiceLifetime.Transient, optionsLifetime: ServiceLifetime.Transient);
+services.AddDbContext<BotContext>(options =>
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+    }
+}, contextLifetime: ServiceLifetime.Transient, optionsLifetime: ServiceLifetime.Transient);
 services.AddHostedSingleton<NitroxBotService>();
 services.AddHostedSingleton<CommandHandlerService>();
 services.AddHostedSingleton<AutoResponseService>();

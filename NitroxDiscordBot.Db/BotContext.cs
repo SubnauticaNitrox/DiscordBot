@@ -10,7 +10,11 @@ public class BotContext : DbContext
     public DbSet<AutoResponse> AutoResponses { get; set; }
     public string DbName { get; init; }
 
-    public BotContext()
+    public BotContext() : this(new DbContextOptions<BotContext>())
+    {
+    }
+
+    public BotContext(DbContextOptions<BotContext> options) : base(options)
     {
         DbName = "nitroxbot.db";
     }

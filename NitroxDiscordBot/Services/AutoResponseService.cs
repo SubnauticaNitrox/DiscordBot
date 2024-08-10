@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using NitroxDiscordBot.Core;
 using NitroxDiscordBot.Db;
 using NitroxDiscordBot.Db.Models;
+using ZiggyCreatures.Caching.Fusion;
 using static NitroxDiscordBot.Db.Models.AutoResponse;
 
 namespace NitroxDiscordBot.Services;
@@ -11,13 +12,15 @@ namespace NitroxDiscordBot.Services;
 public class AutoResponseService : DiscordBotHostedService
 {
     private readonly BotContext db;
+    private readonly IFusionCache cache;
 
     public AutoResponseService(NitroxBotService bot,
         BotContext db,
-        ILogger<AutoResponseService> log) : base(bot, log)
+        ILogger<AutoResponseService> log, IFusionCache cache) : base(bot, log)
     {
         ArgumentNullException.ThrowIfNull(db);
         this.db = db;
+        this.cache = cache;
     }
 
     public override Task StartAsync(CancellationToken cancellationToken)
@@ -44,9 +47,14 @@ public class AutoResponseService : DiscordBotHostedService
 
     private async Task ModerateMessageAsync(SocketGuildUser author, SocketMessage message)
     {
-        foreach (AutoResponse definition in db.AutoResponses
-                     .Include(r => r.Filters)
-                     .Include(r => r.Responses))
+        AutoResponse[] arDefinitions = await cache.GetOrSetAsync($"database.{nameof(db.AutoResponses)}", async ct =>
+        {
+            return await db.AutoResponses
+                .Include(r => r.Filters)
+                .Include(r => r.Responses)
+                .ToArrayAsync(cancellationToken: ct);
+        }, options => options.Duration = TimeSpan.FromSeconds(5));
+        foreach (AutoResponse definition in arDefinitions)
         {
             if (!MatchesFilters(definition.Filters, author, message)) continue;
 
