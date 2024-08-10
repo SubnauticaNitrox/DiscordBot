@@ -59,7 +59,7 @@ public class AutoResponseService : DiscordBotHostedService
             if (!MatchesFilters(definition.Filters, author, message)) continue;
 
             Log.AutoResponseTriggered(definition.Name, message.GetJumpUrl(), author.Username, author.Id);
-            await foreach (Response response in definition.Responses.ToAsyncEnumerable())
+            foreach (Response response in definition.Responses)
             {
                 switch (response.Type)
                 {

@@ -220,7 +220,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         db.Update(ar);
         if (await db.SaveChangesAsync() > 0)
         {
-            await RespondAsync($"You've successfully subscribed to {nameof(AutoResponse)} `{autoResponseName}`",
+            await RespondAsync($"You're now subscribed to {nameof(AutoResponse)} `{autoResponseName}`",
                 ephemeral: true, allowedMentions: AllowedMentions.None);
         }
         else
@@ -267,7 +267,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         db.Update(ar);
         if (await db.SaveChangesAsync() > 0)
         {
-            await RespondAsync($"You've successfully unsubscribed from {nameof(AutoResponse)} `{autoResponseName}`",
+            await RespondAsync($"You've unsubscribed from {nameof(AutoResponse)} `{autoResponseName}`",
                 ephemeral: true, allowedMentions: AllowedMentions.None);
         }
         else
