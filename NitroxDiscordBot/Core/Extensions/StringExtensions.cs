@@ -35,7 +35,8 @@ public static class StringExtensions
         StringComparison comparer = StringComparison.InvariantCultureIgnoreCase)
     {
         Span<Range> sentenceRanges = stackalloc Range[text.Count(sentenceSplitCharacters) + 1];
-        text.SplitAny(sentenceRanges, sentenceSplitCharacters, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        text.SplitAny(sentenceRanges, sentenceSplitCharacters,
+            StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         foreach (Range sentenceRange in sentenceRanges)
         {
             foreach (string wordGroup in wordGroupGroups)
@@ -95,5 +96,61 @@ public static class StringExtensions
         }
 
         return true;
+    }
+
+    public static ArraySegment<TResult> OfParsable<TResult>(this string[] source)
+        where TResult : ISpanParsable<TResult>
+    {
+        TResult[] result = new TResult[source.Length];
+        int endOffset = 0;
+        for (int i = 0; i < source.Length; i++)
+        {
+            if (TResult.TryParse(source[i], CultureInfo.InvariantCulture, out TResult parsed))
+            {
+                result[i - endOffset] = parsed;
+            }
+            else
+            {
+                endOffset++;
+            }
+        }
+        return new ArraySegment<TResult>(result, 0, result.Length - endOffset);
+    }
+
+    public static void OfParsable<TResult>(this string[] source, ref Span<TResult> destination)
+        where TResult : ISpanParsable<TResult>
+    {
+        int endOffset = 0;
+        for (int i = 0; i < source.Length; i++)
+        {
+            if (TResult.TryParse(source[i], CultureInfo.InvariantCulture, out TResult parsed))
+            {
+                destination[i - endOffset] = parsed;
+            }
+            else
+            {
+                endOffset++;
+            }
+        }
+        destination = destination.Slice(0, source.Length - endOffset);
+    }
+
+    /// <summary>
+    ///     Tests the source string array contains the equivalent of the value, once parsed.
+    /// </summary>
+    public static bool ContainsParsable<TParsable>(this string[] source, TParsable value)
+        where TParsable : IEquatable<TParsable>, ISpanParsable<TParsable>
+    {
+        foreach (string item in source)
+        {
+            if (TParsable.TryParse(item, CultureInfo.InvariantCulture, out TParsable parsedItem))
+            {
+                if (parsedItem.Equals(value))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

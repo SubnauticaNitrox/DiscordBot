@@ -11,12 +11,13 @@ namespace NitroxDiscordBot.Services;
 
 public class AutoResponseService : DiscordBotHostedService
 {
-    private readonly BotContext db;
     private readonly IFusionCache cache;
+    private readonly BotContext db;
 
     public AutoResponseService(NitroxBotService bot,
         BotContext db,
-        ILogger<AutoResponseService> log, IFusionCache cache) : base(bot, log)
+        ILogger<AutoResponseService> log,
+        IFusionCache cache) : base(bot, log)
     {
         ArgumentNullException.ThrowIfNull(db);
         this.db = db;
@@ -52,7 +53,7 @@ public class AutoResponseService : DiscordBotHostedService
             return await db.AutoResponses
                 .Include(r => r.Filters)
                 .Include(r => r.Responses)
-                .ToArrayAsync(cancellationToken: ct);
+                .ToArrayAsync(ct);
         }, options => options.Duration = TimeSpan.FromSeconds(5));
         foreach (AutoResponse definition in arDefinitions)
         {
@@ -64,14 +65,14 @@ public class AutoResponseService : DiscordBotHostedService
                 switch (response.Type)
                 {
                     case Response.Types.MessageRoles:
-                        ulong[] roles = response.Value.OfParsable<ulong>().ToArray();
+                        ArraySegment<ulong> roles = response.Value.OfParsable<ulong>();
                         foreach (SocketGuildUser user in Bot.GetUsersWithAnyRoles(author.Guild, roles))
                         {
                             await NotifyModeratorAsync(user, definition.Name, author, message);
                         }
                         break;
                     case Response.Types.MessageUsers:
-                        ulong[] userIds = response.Value.OfParsable<ulong>().ToArray();
+                        ArraySegment<ulong> userIds = response.Value.OfParsable<ulong>();
                         foreach (IGuildUser user in await Bot.GetUsersByIdsAsync(author.Guild, userIds))
                         {
                             await NotifyModeratorAsync(user, definition.Name, author, message);
@@ -91,28 +92,29 @@ public class AutoResponseService : DiscordBotHostedService
         {
             switch (filter.Type)
             {
-                case Filter.Types.AnyChannel when filter.Value is [_, ..] && filter.Value.OfParsable<ulong>().ToArray() is [_, ..] channelIds:
-                    if (!channelIds.Contains(message.Channel.Id)) return false;
+                case Filter.Types.AnyChannel when filter.Value is [_, ..]:
+                    if (!filter.Value.ContainsParsable(message.Channel.Id)) return false;
                     break;
-                case Filter.Types.UserJoinAge when filter.Value is [{} value] &&
-                                                                     TimeSpan.TryParse(value, out TimeSpan valueTimeSpan):
+                case Filter.Types.UserJoinAge when filter.Value is [{ } value] &&
+                                                   TimeSpan.TryParse(value, out TimeSpan valueTimeSpan):
                     if (DateTimeOffset.UtcNow - author.JoinedAt > valueTimeSpan) return false;
                     break;
                 case Filter.Types.MessageWordOrder when filter.Value is [_, ..] values:
-                    return message.Content.AsSpan().ContainsSentenceWithWordOrderOfAny(values);
+                    if (!message.Content.AsSpan().ContainsSentenceWithWordOrderOfAny(values)) return false;
+                    break;
                 default:
                     Log.UnhandledFilterType(filter.Type, filter.Value);
                     break;
             }
-
-next:
-            continue;
         }
 
         return true;
     }
 
-    private async Task NotifyModeratorAsync(IGuildUser userToNotify, string responseName, SocketGuildUser authorToReport, SocketMessage messageToReport)
+    private async Task NotifyModeratorAsync(IGuildUser userToNotify,
+        string responseName,
+        SocketGuildUser authorToReport,
+        SocketMessage messageToReport)
     {
         try
         {

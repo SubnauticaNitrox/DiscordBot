@@ -1,3 +1,5 @@
+using FluentAssertions;
+
 namespace NitroxDiscordBot.Tests;
 
 [TestClass]
@@ -43,5 +45,28 @@ public class StringExtensionsTest
         Assert.IsFalse(text.ContainsSentenceWithWordOrderOfAny(["dolor test elit"]));
         Assert.IsFalse(text.ContainsSentenceWithWordOrderOfAny(["ipsum Lorem"]));
         Assert.IsFalse("One, two, three.".AsSpan().ContainsSentenceWithWordOrderOfAny(["one three two"]));
+    }
+
+    [TestMethod]
+    public void TestOfParsable()
+    {
+        string[] data = ["test", 106248L.ToString(), 102510124L.ToString(), "invalid", 7236202510124L.ToString(), "oops"];
+        long[] expected = [106248L, 102510124L, 7236202510124L];
+
+        data.OfParsable<ulong>().Should().BeEquivalentTo(expected);
+        Span<ulong> ulongStack = stackalloc ulong[data.Length];
+        data.OfParsable(ref ulongStack);
+        ulongStack.ToArray().Should().BeEquivalentTo(expected);
+    }
+
+    [TestMethod]
+    public void TestContainsParsable()
+    {
+        string[] data = ["test", 106248L.ToString(), 102510124L.ToString(), "invalid", 7236202510124L.ToString(), "oops"];
+
+        data.ContainsParsable<ulong>(106248L).Should().BeTrue();
+        data.ContainsParsable<ulong>(7236202510124L).Should().BeTrue();
+        data.ContainsParsable<ulong>(0L).Should().BeFalse();
+        data.ContainsParsable<ulong>(7236202510125L).Should().BeFalse();
     }
 }

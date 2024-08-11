@@ -260,7 +260,7 @@ public class NitroxBotService : IHostedService, IDisposable
         }
     }
 
-    public IEnumerable<SocketGuildUser> GetUsersWithAnyRoles(SocketGuild guild, params ulong[] roles)
+    public IEnumerable<SocketGuildUser> GetUsersWithAnyRoles(SocketGuild guild, ArraySegment<ulong> roles)
     {
         Dictionary<ulong, SocketGuildUser> result = [];
         foreach (SocketRole role in guild.Roles)
@@ -279,13 +279,13 @@ public class NitroxBotService : IHostedService, IDisposable
         return result.Values;
     }
 
-    public async Task<List<IGuildUser>> GetUsersByIdsAsync(IGuild guild, params ulong[] userIds)
+    public async Task<List<IGuildUser>> GetUsersByIdsAsync(IGuild guild, ArraySegment<ulong> userIds)
     {
         if (guild == null)
         {
             return [];
         }
-        if (userIds is null or [])
+        if (userIds is [])
         {
             return [];
         }
