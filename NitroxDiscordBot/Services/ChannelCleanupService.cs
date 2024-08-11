@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Cronos;
+using Microsoft.EntityFrameworkCore;
 using NitroxDiscordBot.Core;
 using NitroxDiscordBot.Db;
 using NitroxDiscordBot.Db.Models;
@@ -112,21 +113,30 @@ public class ChannelCleanupService : DiscordBotHostedService
             }
 
             // Check if cleanup definitions indicates that task should run now, keeping track if task already ran.
-            await foreach (Cleanup cleanupDefinition in db.Cleanups.AsAsyncEnumerable()
-                               .WithCancellation(cancellationToken))
+            try
             {
-                if (cancellationToken.IsCancellationRequested) break;
-                if (!scheduledTasks.TryGetValue(cleanupDefinition, out DateTime scheduledTime))
+                await foreach (Cleanup cleanupDefinition in db.Cleanups
+                                   .AsNoTracking()
+                                   .AsAsyncEnumerable()
+                                   .WithCancellation(cancellationToken))
                 {
-                    scheduledTime = AddOrUpdateScheduleForCleanupDefinition(scheduledTasks, cleanupDefinition);
-                }
+                    if (cancellationToken.IsCancellationRequested) break;
+                    if (!scheduledTasks.TryGetValue(cleanupDefinition, out DateTime scheduledTime))
+                    {
+                        scheduledTime = AddOrUpdateScheduleForCleanupDefinition(scheduledTasks, cleanupDefinition);
+                    }
 
-                // If scheduled time is in the past, queue for immediate run and calc the next occurence.
-                if ((scheduledTime - DateTime.UtcNow).Ticks < 0)
-                {
-                    await workQueue.Writer.WriteAsync(cleanupDefinition, cancellationToken);
-                    AddOrUpdateScheduleForCleanupDefinition(scheduledTasks, cleanupDefinition);
+                    // If scheduled time is in the past, queue for immediate run and calc the next occurence.
+                    if ((scheduledTime - DateTime.UtcNow).Ticks < 0)
+                    {
+                        await workQueue.Writer.WriteAsync(cleanupDefinition, cancellationToken);
+                        AddOrUpdateScheduleForCleanupDefinition(scheduledTasks, cleanupDefinition);
+                    }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
         }
 

@@ -35,16 +35,14 @@ services.Configure<HostOptions>(options =>
 services.AddLogging(opt =>
 {
     opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff ");
-    if (builder.Environment.IsDevelopment())
-    {
-        opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", LogLevel.Information);
-    }
+    opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", builder.Environment.IsDevelopment() ? LogLevel.Information : LogLevel.Warning);
 });
 services.AddFusionCache()
     .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5));
 // Don't use Scoped lifetime for DbContext as the services are singleton, not Scoped/Transient.
 services.AddDbContext<BotContext>(options =>
 {
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();

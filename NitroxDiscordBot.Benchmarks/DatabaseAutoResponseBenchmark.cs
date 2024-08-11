@@ -51,8 +51,22 @@ public class DatabaseAutoResponseBenchmark
     {
         int num = 0;
         foreach (AutoResponse response in db.AutoResponses
+                     .AsNoTracking()
                      .Include(r => r.Filters)
                      .Include(r => r.Responses))
+        {
+            num += response.Name.Length;
+        }
+        return num;
+    }
+
+    [Benchmark]
+    public int Select()
+    {
+        int num = 0;
+        foreach (var response in db.AutoResponses
+                     .AsSingleQuery()
+                     .Select(ar => new { ar.Name, ar.Responses, ar.Filters }))
         {
             num += response.Name.Length;
         }

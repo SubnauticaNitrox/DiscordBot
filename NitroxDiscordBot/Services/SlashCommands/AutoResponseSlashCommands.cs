@@ -19,15 +19,13 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
 {
     private readonly NitroxBotService bot;
     private readonly BotContext db;
-    private readonly ILogger<AutoResponseSlashCommands> log;
 
-    public AutoResponseSlashCommands(NitroxBotService bot, BotContext db, ILogger<AutoResponseSlashCommands> log)
+    public AutoResponseSlashCommands(NitroxBotService bot, BotContext db)
     {
         ArgumentNullException.ThrowIfNull(db);
         ArgumentNullException.ThrowIfNull(bot);
         this.bot = bot;
         this.db = db;
-        this.log = log;
     }
 
     [SlashCommand("create", "Creates an auto response for any or specific user message")]
@@ -119,7 +117,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                         break;
                     case Filter.Types.UserJoinAge:
                         sb.Append(string.Join(", ", filter.Value.OfParsable<TimeSpan>()
-                                .Select(t => t.ToPrettyFormat())));
+                            .Select(t => t.ToPrettyFormat())));
                         break;
                     default:
                         if (filter.Value.Length > 0)
@@ -184,6 +182,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         string autoResponseName)
     {
         AutoResponse ar = await db.AutoResponses
+            .AsTracking()
             .Include(a => a.Responses)
             .Where(ar => ar.Name == autoResponseName)
             .FirstOrDefaultAsync();
@@ -237,6 +236,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         string autoResponseName)
     {
         AutoResponse ar = await db.AutoResponses
+            .AsTracking()
             .Include(a => a.Responses)
             .Where(ar => ar.Name == autoResponseName)
             .FirstOrDefaultAsync();
@@ -247,7 +247,8 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 allowedMentions: AllowedMentions.None);
             return;
         }
-        if (ar.Responses.All(r => r.Type == Response.Types.MessageUsers && !r.Value.Contains(Context.User.Id.ToString())))
+        if (ar.Responses.All(
+                r => r.Type == Response.Types.MessageUsers && !r.Value.Contains(Context.User.Id.ToString())))
         {
             await RespondAsync($"You already aren't subscribed to {nameof(AutoResponse)} `{autoResponseName}`",
                 ephemeral: true,
@@ -305,7 +306,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 return;
             }
             AutoResponse ar =
-                await db.AutoResponses.Where(ar => ar.Name == autoResponseName)
+                await db.AutoResponses.AsTracking().Where(ar => ar.Name == autoResponseName)
                     .FirstOrDefaultAsync();
             if (ar == null)
             {
@@ -375,7 +376,9 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 return;
             }
             AutoResponse ar =
-                await db.AutoResponses.Where(ar => ar.Name == autoResponseName)
+                await db.AutoResponses
+                    .AsTracking()
+                    .Where(ar => ar.Name == autoResponseName)
                     .FirstOrDefaultAsync();
             if (ar == null)
             {
