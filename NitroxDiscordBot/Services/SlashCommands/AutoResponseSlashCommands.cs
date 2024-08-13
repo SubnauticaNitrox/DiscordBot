@@ -55,36 +55,6 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         }
     }
 
-    [SlashCommand("remove", "Removes an auto response")]
-    public async Task RemoveAsync(
-        [Summary("name")] [Autocomplete<AutoResponseNameAutoComplete>]
-        string autoResponseName)
-    {
-        if (string.IsNullOrWhiteSpace(autoResponseName))
-        {
-            await RespondAsync("Please provide a valid auto response name to remove", ephemeral: true);
-            return;
-        }
-
-        AutoResponse arToDelete = await db.AutoResponses
-            .Include(ar => ar.Responses)
-            .Include(ar => ar.Filters)
-            .FirstOrDefaultAsync(ar => ar.Name.ToLower() == autoResponseName.ToLower());
-        if (arToDelete != null)
-        {
-            db.AutoResponses.Remove(arToDelete);
-            int deletions = await db.SaveChangesAsync();
-            if (deletions > 0)
-            {
-                await RespondAsync($"Auto response `{arToDelete.Name}` has been removed", ephemeral: true);
-                return;
-            }
-        }
-
-        await RespondAsync($"No auto response with the name `{autoResponseName}` exists. Nothing was removed.",
-            ephemeral: true);
-    }
-
     [SlashCommand("list", "Shows active auto responses")]
     public async Task ListAsync()
     {
@@ -142,16 +112,14 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 switch (response.Type)
                 {
                     case Response.Types.MessageUsers:
-                        foreach (IGuildUser user in await bot.GetUsersByIdsAsync(Context.Guild,
-                                     response.Value.OfParsable<ulong>().ToArray()))
+                        foreach (IGuildUser user in await bot.GetUsersByIdsAsync(Context.Guild, response.Value.OfParsable<ulong>()))
                         {
                             sb.Append(user.Mention).Append(' ');
                         }
                         sb.Remove(sb.Length - 1, 1);
                         break;
                     case Response.Types.MessageRoles:
-                        foreach (SocketRole role in bot.GetRolesByIds(Context.Guild as SocketGuild,
-                                     response.Value.OfParsable<ulong>().ToArray()))
+                        foreach (SocketRole role in bot.GetRolesByIds(Context.Guild as SocketGuild, response.Value.OfParsable<ulong>()))
                         {
                             sb.Append(role.Mention).Append(' ');
                         }
@@ -264,9 +232,12 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             {
                 db.Remove(targetResponse);
             }
+            else
+            {
+                db.Update(ar);
+            }
         }
 
-        db.Update(ar);
         if (await db.SaveChangesAsync() > 0)
         {
             await RespondAsync($"You've unsubscribed from {nameof(AutoResponse)} `{autoResponseName}`",
@@ -315,47 +286,19 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     ephemeral: true);
                 return;
             }
-            char[] valueSplitChars = type switch
-            {
-                Filter.Types.AnyChannel => [',', ' '],
-                _ => [',']
-            };
-            string[] values = value.Split(valueSplitChars,
-                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            if (values is null or { Length: 0 })
-            {
-                await RespondAsync("Filter value must not be empty", ephemeral: true);
-                return;
-            }
-            // Validate values are compatible with filter type
-            switch (type)
-            {
-                case Filter.Types.AnyChannel when values is [_, ..] &&
-                                                  values.OfParsable<ulong>().ToArray() is
-                                                      [_, ..] channelIds:
-                    foreach (ulong channelId in channelIds)
-                    {
-                        if (await bot.GetChannelAsync<ITextChannel>(channelId) == null)
-                        {
-                            await RespondAsync($"No text channel was found that has id `{channelId}`", ephemeral: true);
-                            return;
-                        }
-                    }
-                    break;
-                case Filter.Types.UserJoinAge when values is [_] && TimeSpan.TryParse(values[0], out TimeSpan _):
-                    break;
-                case Filter.Types.MessageWordOrder:
-                    break;
-                default:
-                    await RespondAsync($"Unsupported value `{value}` for filter type `{type}`", ephemeral: true);
-                    return;
-            }
-
-            ar.Filters.Add(new Filter
+            Filter filter = new()
             {
                 Type = type,
-                Value = values
-            });
+            };
+            (string error, string[] values) = await filter.ValidateAsync(bot, value);
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                await RespondAsync(error, ephemeral: true, allowedMentions: AllowedMentions.None);
+                return;
+            }
+
+            filter.Value = values;
+            ar.Filters.Add(filter);
             db.AutoResponses.Update(ar);
             if (await db.SaveChangesAsync() > 0)
             {
@@ -387,60 +330,112 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     ephemeral: true);
                 return;
             }
-            char[] valueSplitChars = type switch
+            Response response = new()
             {
-                Response.Types.MessageRoles or Response.Types.MessageUsers => [',', ' '],
-                _ => [',']
+                Type = type
             };
-            string[] values = value.Split(valueSplitChars,
-                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            if (values is null or { Length: 0 })
+            (string error, string[] values) = await response.ValidateAsync(bot, Context.Guild, value);
+            if (!string.IsNullOrEmpty(error))
             {
-                await RespondAsync("Response value must not be empty", ephemeral: true);
+                await RespondAsync(error, ephemeral: true, allowedMentions: AllowedMentions.None);
                 return;
             }
-            // Validate values are compatible with response type
-            switch (type)
-            {
-                case Response.Types.MessageRoles:
-                    IEnumerable<SocketRole> roles = bot.GetRolesByIds(Context.Guild as SocketGuild,
-                        values.OfParsable<ulong>().ToArray());
-                    string[] missingRoles = values.ExceptBy(roles.Select(u => u.Id.ToString()), s => s).ToArray();
-                    if (missingRoles.Any())
-                    {
-                        await RespondAsync(
-                            $"The following role ids are missing from this server `{string.Join(", ", missingRoles)}`",
-                            ephemeral: true);
-                        return;
-                    }
-                    break;
-                case Response.Types.MessageUsers:
-                    List<IGuildUser> users = await bot.GetUsersByIdsAsync(Context.Guild,
-                        values.OfParsable<ulong>().ToArray());
-                    string[] missingUsers = values.ExceptBy(users.Select(u => u.Id.ToString()), s => s).ToArray();
-                    if (missingUsers.Any())
-                    {
-                        await RespondAsync(
-                            $"The following user ids are missing from this server `{string.Join(", ", missingUsers)}`",
-                            ephemeral: true);
-                        return;
-                    }
-                    break;
-                default:
-                    await RespondAsync($"Unsupported value `{value}` for filter type `{type}`", ephemeral: true);
-                    return;
-            }
 
-            ar.Responses.Add(new Response
-            {
-                Type = type,
-                Value = values
-            });
+            response.Value = values;
+            ar.Responses.Add(response);
             db.AutoResponses.Update(ar);
             if (await db.SaveChangesAsync() > 0)
             {
                 await RespondAsync($"Response `{type}` has been added to {nameof(AutoResponse)} `{ar.Name}`",
                     ephemeral: true);
+            }
+            else
+            {
+                await RespondAsync($"Failed to add response `{type}` to {nameof(AutoResponse)} `{ar.Name}`",
+                    ephemeral: true);
+            }
+        }
+    }
+
+    [Group("remove", "Removes a filter or response from an auto response")]
+    public class AutoResponseRemove : NitroxInteractionModule
+    {
+        private readonly NitroxBotService bot;
+        private readonly BotContext db;
+
+        public AutoResponseRemove(NitroxBotService bot, BotContext db)
+        {
+            ArgumentNullException.ThrowIfNull(db);
+            ArgumentNullException.ThrowIfNull(bot);
+            this.bot = bot;
+            this.db = db;
+        }
+
+        [SlashCommand("all", "Removes an auto response")]
+        public async Task RemoveAsync(
+            [Summary("name")] [Autocomplete<AutoResponseNameAutoComplete>]
+            string autoResponseName)
+        {
+            if (string.IsNullOrWhiteSpace(autoResponseName))
+            {
+                await RespondAsync("Please provide a valid auto response name to remove", ephemeral: true);
+                return;
+            }
+
+            AutoResponse arToDelete = await db.AutoResponses
+                .Include(ar => ar.Responses)
+                .Include(ar => ar.Filters)
+                .FirstOrDefaultAsync(ar => ar.Name.ToLower() == autoResponseName.ToLower());
+            if (arToDelete != null)
+            {
+                db.AutoResponses.Remove(arToDelete);
+                int deletions = await db.SaveChangesAsync();
+                if (deletions > 0)
+                {
+                    await RespondAsync($"Auto response `{arToDelete.Name}` has been removed", ephemeral: true);
+                    return;
+                }
+            }
+
+            await RespondAsync($"No auto response with the name `{autoResponseName}` exists. Nothing was removed.",
+                ephemeral: true);
+        }
+
+        [SlashCommand("filter", "Removes a filter from an auto response")]
+        public async Task UpdateFilterAsync(
+            [Summary(OptionKeys.AutoResponseName)] [Autocomplete<AutoResponseNameAutoComplete>]
+            string autoResponseName,
+            [Summary(OptionKeys.FilterId)] [Autocomplete<AutoResponseExistingFiltersByIdAutoComplete>]
+            int filterId)
+        {
+            AutoResponse ar =
+                await db.AutoResponses
+                    .Include(ar => ar.Filters)
+                    .AsTracking()
+                    .FirstOrDefaultAsync(ar => ar.Name == autoResponseName);
+            if (ar == null)
+            {
+                await RespondAsync($"An auto response with the name `{autoResponseName}` was not found",
+                    ephemeral: true);
+                return;
+            }
+            Filter filter = ar.Filters.FirstOrDefault(f => f.FilterId == filterId);
+            if (filter == null)
+            {
+                await RespondAsync($"Requested filter was not found on auto response `{autoResponseName}`",
+                    ephemeral: true);
+                return;
+            }
+
+            ar.Filters.Remove(filter);
+            db.AutoResponses.Update(ar);
+            if (await db.SaveChangesAsync() > 0)
+            {
+                await RespondAsync($"Removed filter `{filter.Type}` from the AutoResponse `{ar.Name}` with value `{string.Join(',', filter.Value)}`", ephemeral: true);
+            }
+            else
+            {
+                await RespondAsync($"Failed to remove `{filter.Type}` from AutoResponse `{ar.Name}`", ephemeral: true);
             }
         }
     }
@@ -486,40 +481,11 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     ephemeral: true);
                 return;
             }
-            char[] valueSplitChars = filter.Type switch
+            (string error, string[] values) = await filter.ValidateAsync(bot, value);
+            if (!string.IsNullOrWhiteSpace(error))
             {
-                Filter.Types.AnyChannel => [',', ' '],
-                _ => [',']
-            };
-            string[] values = value.Split(valueSplitChars,
-                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            if (values is null or { Length: 0 })
-            {
-                await RespondAsync("Filter value must not be empty", ephemeral: true);
+                await RespondAsync(error, ephemeral: true, allowedMentions: AllowedMentions.None);
                 return;
-            }
-            // Validate values are compatible with filter type
-            switch (filter.Type)
-            {
-                case Filter.Types.AnyChannel when values is [_, ..] &&
-                                                  values.OfParsable<ulong>() is
-                                                      [_, ..] channelIds:
-                    foreach (ulong channelId in channelIds)
-                    {
-                        if (await bot.GetChannelAsync<ITextChannel>(channelId) == null)
-                        {
-                            await RespondAsync($"No text channel was found that has id `{channelId}`", ephemeral: true);
-                            return;
-                        }
-                    }
-                    break;
-                case Filter.Types.UserJoinAge when values is [_] && TimeSpan.TryParse(values[0], out TimeSpan _):
-                    break;
-                case Filter.Types.MessageWordOrder:
-                    break;
-                default:
-                    await RespondAsync($"Unsupported value `{value}` for filter type `{filter.Type}`", ephemeral: true);
-                    return;
             }
 
             filter.Value = values;

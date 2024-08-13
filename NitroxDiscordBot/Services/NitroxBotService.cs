@@ -242,7 +242,7 @@ public class NitroxBotService : IHostedService, IDisposable
         });
     }
 
-    public IEnumerable<SocketRole> GetRolesByIds(SocketGuild guild, params ulong[] roles)
+    public IEnumerable<SocketRole> GetRolesByIds(SocketGuild guild, ArraySegment<ulong> roles)
     {
         if (guild == null)
         {

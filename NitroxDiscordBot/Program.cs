@@ -36,6 +36,7 @@ services.AddLogging(opt =>
 {
     opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff ");
     opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", builder.Environment.IsDevelopment() ? LogLevel.Information : LogLevel.Warning);
+    opt.AddFilter($"{nameof(ZiggyCreatures)}.{nameof(ZiggyCreatures.Caching)}", LogLevel.Information);
 });
 services.AddFusionCache()
     .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5));
