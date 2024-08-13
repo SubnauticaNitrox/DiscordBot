@@ -9,6 +9,7 @@ using NitroxDiscordBot.Db.Models;
 using NitroxDiscordBot.Services.SlashCommands.AutoComplete;
 using NitroxDiscordBot.Services.SlashCommands.Preconditions;
 using static NitroxDiscordBot.Db.Models.AutoResponse;
+using static NitroxDiscordBot.Services.SlashCommands.AutoComplete.AutoCompleteConstants;
 
 namespace NitroxDiscordBot.Services.SlashCommands;
 
@@ -294,7 +295,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
 
         [SlashCommand("filter", "Adds a filter to an existing auto response")]
         public async Task AddFilterAsync(
-            [Summary("auto-response-name")] [Autocomplete<AutoResponseNameAutoComplete>]
+            [Summary(OptionKeys.AutoResponseName)] [Autocomplete<AutoResponseNameAutoComplete>]
             string autoResponseName,
             [Summary("type")] [Autocomplete<AutoResponseFilterTypesAutoComplete>]
             string typeName,
@@ -364,7 +365,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
 
         [SlashCommand("response", "Adds a response to an existing auto response")]
         public async Task AddResponseAsync(
-            [Summary("auto-response-name")] [Autocomplete<AutoResponseNameAutoComplete>]
+            [Summary(OptionKeys.AutoResponseName)] [Autocomplete<AutoResponseNameAutoComplete>]
             string autoResponseName,
             [Summary("type")] [Autocomplete<AutoResponseResponseTypesAutoComplete>]
             string typeName,
@@ -439,6 +440,99 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             if (await db.SaveChangesAsync() > 0)
             {
                 await RespondAsync($"Response `{type}` has been added to {nameof(AutoResponse)} `{ar.Name}`",
+                    ephemeral: true);
+            }
+        }
+    }
+
+    [Group("update", "Updates existing auto responses")]
+    public class AutoResponseUpdate : NitroxInteractionModule
+    {
+        private readonly NitroxBotService bot;
+        private readonly BotContext db;
+
+        public AutoResponseUpdate(NitroxBotService bot, BotContext db)
+        {
+            ArgumentNullException.ThrowIfNull(db);
+            ArgumentNullException.ThrowIfNull(bot);
+            this.bot = bot;
+            this.db = db;
+        }
+
+        [SlashCommand("filter", "Updates a filter of an existing auto response")]
+        public async Task UpdateFilterAsync(
+            [Summary(OptionKeys.AutoResponseName)] [Autocomplete<AutoResponseNameAutoComplete>]
+            string autoResponseName,
+            [Summary(OptionKeys.FilterId)] [Autocomplete<AutoResponseExistingFiltersByIdAutoComplete>]
+            int filterId,
+            [Summary("value")] [Autocomplete<AutoResponseExistingFilterValueAutoComplete>]
+            string value)
+        {
+            AutoResponse ar =
+                await db.AutoResponses
+                    .Include(ar => ar.Filters)
+                    .AsTracking()
+                    .FirstOrDefaultAsync(ar => ar.Name == autoResponseName);
+            if (ar == null)
+            {
+                await RespondAsync($"An auto response with the name `{autoResponseName}` was not found",
+                    ephemeral: true);
+                return;
+            }
+            Filter filter = ar.Filters.FirstOrDefault(f => f.FilterId == filterId);
+            if (filter == null)
+            {
+                await RespondAsync($"Requested filter was not found on auto response `{autoResponseName}`",
+                    ephemeral: true);
+                return;
+            }
+            char[] valueSplitChars = filter.Type switch
+            {
+                Filter.Types.AnyChannel => [',', ' '],
+                _ => [',']
+            };
+            string[] values = value.Split(valueSplitChars,
+                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if (values is null or { Length: 0 })
+            {
+                await RespondAsync("Filter value must not be empty", ephemeral: true);
+                return;
+            }
+            // Validate values are compatible with filter type
+            switch (filter.Type)
+            {
+                case Filter.Types.AnyChannel when values is [_, ..] &&
+                                                  values.OfParsable<ulong>() is
+                                                      [_, ..] channelIds:
+                    foreach (ulong channelId in channelIds)
+                    {
+                        if (await bot.GetChannelAsync<ITextChannel>(channelId) == null)
+                        {
+                            await RespondAsync($"No text channel was found that has id `{channelId}`", ephemeral: true);
+                            return;
+                        }
+                    }
+                    break;
+                case Filter.Types.UserJoinAge when values is [_] && TimeSpan.TryParse(values[0], out TimeSpan _):
+                    break;
+                case Filter.Types.MessageWordOrder:
+                    break;
+                default:
+                    await RespondAsync($"Unsupported value `{value}` for filter type `{filter.Type}`", ephemeral: true);
+                    return;
+            }
+
+            filter.Value = values;
+            db.AutoResponses.Update(ar);
+            if (await db.SaveChangesAsync() > 0)
+            {
+                await RespondAsync(
+                    $"Filter `{filter.Type}` has been updated on AutoResponse `{ar.Name}` with value `{value}`",
+                    ephemeral: true);
+            }
+            else
+            {
+                await RespondAsync($"Failed to update `{filter.Type}` on AutoResponse `{ar.Name}` with value `{value}`",
                     ephemeral: true);
             }
         }

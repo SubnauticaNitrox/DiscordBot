@@ -53,6 +53,9 @@ public static partial class LoggerExtensions
         ulong guildId,
         ulong botGuildId);
 
+    [LoggerMessage(LogLevel.Warning, Message = "Auto complete is configured wrong for command: {CommandName}")]
+    public static partial void AutoCompleteInvalidState(this ILogger logger, string commandName);
+
     [LoggerMessage(LogLevel.Error, Message = "Unable to modify message at index {Index} because it is authored by another user: '{DiscordUsername}' ({DiscordUserId})")]
     public static partial void UnableToModifyMessageByDifferentAuthor(this ILogger logger,
         int index,
