@@ -75,8 +75,9 @@ public static class StringExtensions
         for (int i = 0; i < wordRanges.Length; i++)
         {
             Range wordRange = wordRanges[i];
-            int index = contentSliceStart + content.Slice(contentSliceStart).IndexOf(words[wordRange], comparison);
+            int index = content.Slice(contentSliceStart).IndexOf(words[wordRange], comparison);
             if (index <= -1) return false;
+            index += contentSliceStart;
             // Previous word should be somewhere before the current word.
             if (i > 0 && indices[i - 1] >= index) return false;
             // Test that index is at the start/end of a word (i.e. not somewhere inside it).

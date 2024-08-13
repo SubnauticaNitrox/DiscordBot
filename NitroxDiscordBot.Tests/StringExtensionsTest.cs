@@ -17,6 +17,7 @@ public class StringExtensionsTest
         Assert.IsTrue("hello good world".AsSpan().ContainsWordsInOrder("hello world"));
         Assert.IsTrue("Can you tell me the way to the nearest hospital?".AsSpan().ContainsWordsInOrder("tell nearest hospital"));
         Assert.IsTrue("Can you tell me the way to the nearest hospital?".AsSpan().ContainsWordsInOrder("tell nearest hospital"));
+        Assert.IsTrue("Can anyone help me on how to fix sink?".AsSpan().ContainsWordsInOrder("help fix sink"));
         Assert.IsFalse("A".AsSpan().ContainsWordsInOrder("B"));
         Assert.IsFalse("A B".AsSpan().ContainsWordsInOrder("B A"));
         Assert.IsFalse("world hello".AsSpan().ContainsWordsInOrder("hello world"));
@@ -41,6 +42,7 @@ public class StringExtensionsTest
         Assert.IsTrue("One, two, three?!?!?".AsSpan().ContainsSentenceWithWordOrderOfAny(["one two three"]));
         Assert.IsTrue("!!One, two, three?!?!?".AsSpan().ContainsSentenceWithWordOrderOfAny(["one two three"]));
         Assert.IsTrue("hi i have a friend witch can do help?".AsSpan().ContainsSentenceWithWordOrderOfAny(["I can help"]));
+        Assert.IsTrue("Can anyone help me on how to fix sink?".AsSpan().ContainsSentenceWithWordOrderOfAny(["help fix sink", "how fix sink", "I fix sink"]));
         Assert.IsFalse("".AsSpan().ContainsSentenceWithWordOrderOfAny([]));
         Assert.IsFalse(text.ContainsSentenceWithWordOrderOfAny([]));
         Assert.IsFalse(text.ContainsSentenceWithWordOrderOfAny(["dolor test elit"]));
