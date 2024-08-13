@@ -82,16 +82,19 @@ public static class StringExtensions
             // Test that index is at the start/end of a word (i.e. not somewhere inside it).
             if (index - 1 > -1 && content[index - 1] is var start && !IsWordBoundary(start))
             {
-                return false;
+                i--;
+                goto ignoreResultMoveNext;
             }
             int endOfMatchedWordIndex = index + words[wordRange].Length;
             if (endOfMatchedWordIndex < content.Length && content[endOfMatchedWordIndex] is var end &&
                 !IsWordBoundary(end))
             {
-                return false;
+                i--;
+                goto ignoreResultMoveNext;
             }
 
             indices[i] = index;
+            ignoreResultMoveNext:
             contentSliceStart = index + 1;
         }
 

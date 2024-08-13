@@ -40,6 +40,7 @@ public class StringExtensionsTest
         Assert.IsTrue("One, two, three?".AsSpan().ContainsSentenceWithWordOrderOfAny(["one two three"]));
         Assert.IsTrue("One, two, three?!?!?".AsSpan().ContainsSentenceWithWordOrderOfAny(["one two three"]));
         Assert.IsTrue("!!One, two, three?!?!?".AsSpan().ContainsSentenceWithWordOrderOfAny(["one two three"]));
+        Assert.IsTrue("hi i have a friend witch can do help?".AsSpan().ContainsSentenceWithWordOrderOfAny(["I can help"]));
         Assert.IsFalse("".AsSpan().ContainsSentenceWithWordOrderOfAny([]));
         Assert.IsFalse(text.ContainsSentenceWithWordOrderOfAny([]));
         Assert.IsFalse(text.ContainsSentenceWithWordOrderOfAny(["dolor test elit"]));
