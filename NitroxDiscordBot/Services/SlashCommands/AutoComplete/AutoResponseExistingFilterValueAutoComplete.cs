@@ -60,7 +60,7 @@ public class AutoResponseExistingFilterValueAutoComplete : AutocompleteHandler
             AutoResponse.Filter filter = autoResponse.Filters.FirstOrDefault(f => f.FilterId == targetFilterId);
             if (filter == null)
             {
-                return AutocompletionResult.FromError(InteractionCommandError.Exception, $"The requested filter was not found");
+                return AutocompletionResult.FromError(InteractionCommandError.Exception, "The requested filter was not found");
             }
 
             string filterValue = string.Join(',', filter.Value);

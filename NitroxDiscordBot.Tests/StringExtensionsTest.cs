@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FluentAssertions;
 
 namespace NitroxDiscordBot.Tests;
@@ -5,51 +6,6 @@ namespace NitroxDiscordBot.Tests;
 [TestClass]
 public class StringExtensionsTest
 {
-    [TestMethod]
-    public void TestContainsWordsInOrder()
-    {
-        Assert.IsTrue("".AsSpan().ContainsWordsInOrder(""));
-        Assert.IsTrue("A".AsSpan().ContainsWordsInOrder(""));
-        Assert.IsTrue("A".AsSpan().ContainsWordsInOrder("A"));
-        Assert.IsTrue("A B".AsSpan().ContainsWordsInOrder("A B"));
-        Assert.IsTrue("    A    B   ".AsSpan().ContainsWordsInOrder("A B"));
-        Assert.IsTrue("hello world".AsSpan().ContainsWordsInOrder("hello world"));
-        Assert.IsTrue("hello good world".AsSpan().ContainsWordsInOrder("hello world"));
-        Assert.IsTrue("Can you tell me the way to the nearest hospital?".AsSpan().ContainsWordsInOrder("tell nearest hospital"));
-        Assert.IsTrue("Can you tell me the way to the nearest hospital?".AsSpan().ContainsWordsInOrder("tell nearest hospital"));
-        Assert.IsTrue("Can anyone help me on how to fix sink?".AsSpan().ContainsWordsInOrder("help fix sink"));
-        Assert.IsFalse("A".AsSpan().ContainsWordsInOrder("B"));
-        Assert.IsFalse("A B".AsSpan().ContainsWordsInOrder("B A"));
-        Assert.IsFalse("world hello".AsSpan().ContainsWordsInOrder("hello world"));
-        Assert.IsFalse("Can you tell me the way to the nearest hospital?".AsSpan().ContainsWordsInOrder("tell hospital nearest"));
-        Assert.IsFalse("Can you tell me the way to the nearest hospital!?".AsSpan().ContainsWordsInOrder("tell hospital nearest"));
-    }
-
-    [TestMethod]
-    public void TestContainsSentenceWithWordOrderOfAny()
-    {
-        ReadOnlySpan<char> text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec nec libero at nibh tristique viverra non non felis.".AsSpan();
-
-        Assert.IsTrue(text.ContainsSentenceWithWordOrderOfAny(["lorem ipsum"]));
-        Assert.IsTrue(text.ContainsSentenceWithWordOrderOfAny(["sobarma", "lorem ipsum"]));
-        Assert.IsTrue(text.ContainsSentenceWithWordOrderOfAny(["sobarma", "nibh"]));
-        Assert.IsTrue(text.ContainsSentenceWithWordOrderOfAny(["sobarma", "lorem ipsum dolor"]));
-        Assert.IsTrue(text.ContainsSentenceWithWordOrderOfAny(["lorem ipsum", "ipsum lorem"]));
-        Assert.IsTrue("Lorem ipsum : dolor sit amet".AsSpan().ContainsSentenceWithWordOrderOfAny(["ipsum lorem", "lorem ipsum"]));
-        Assert.IsTrue("A.B.C".AsSpan().ContainsSentenceWithWordOrderOfAny(["c"]));
-        Assert.IsTrue("One, two, three.".AsSpan().ContainsSentenceWithWordOrderOfAny(["one two three"]));
-        Assert.IsTrue("One, two, three?".AsSpan().ContainsSentenceWithWordOrderOfAny(["one two three"]));
-        Assert.IsTrue("One, two, three?!?!?".AsSpan().ContainsSentenceWithWordOrderOfAny(["one two three"]));
-        Assert.IsTrue("!!One, two, three?!?!?".AsSpan().ContainsSentenceWithWordOrderOfAny(["one two three"]));
-        Assert.IsTrue("hi i have a friend witch can do help?".AsSpan().ContainsSentenceWithWordOrderOfAny(["I can help"]));
-        Assert.IsTrue("Can anyone help me on how to fix sink?".AsSpan().ContainsSentenceWithWordOrderOfAny(["help fix sink", "how fix sink", "I fix sink"]));
-        Assert.IsFalse("".AsSpan().ContainsSentenceWithWordOrderOfAny([]));
-        Assert.IsFalse(text.ContainsSentenceWithWordOrderOfAny([]));
-        Assert.IsFalse(text.ContainsSentenceWithWordOrderOfAny(["dolor test elit"]));
-        Assert.IsFalse(text.ContainsSentenceWithWordOrderOfAny(["ipsum Lorem"]));
-        Assert.IsFalse("One, two, three.".AsSpan().ContainsSentenceWithWordOrderOfAny(["one three two"]));
-    }
-
     [TestMethod]
     public void TestOfParsable()
     {
@@ -71,5 +27,18 @@ public class StringExtensionsTest
         data.ContainsParsable<ulong>(7236202510124L).Should().BeTrue();
         data.ContainsParsable<ulong>(0L).Should().BeFalse();
         data.ContainsParsable<ulong>(7236202510125L).Should().BeFalse();
+    }
+
+    [TestMethod]
+    public void TestCreateRegexesForAnyWordGroupInOrderInSentence()
+    {
+        Regex[] regexes = new[] { "play game|subnautica me" }.CreateRegexesForAnyWordGroupInOrderInSentence();
+        regexes.Should().HaveCount(1);
+        regexes[0].IsMatch("Does anyone wanne play subnautica with me?").Should().BeTrue();
+        regexes[0].IsMatch("Thanks everyone. Btw, does anyone wanne play subnautica with me?").Should().BeTrue();
+        regexes[0].IsMatch("play game me").Should().BeTrue();
+        regexes[0].IsMatch("Does anyone wanne play subnautica?").Should().BeFalse();
+        regexes[0].IsMatch("game play").Should().BeFalse();
+        regexes[0].IsMatch("game play me").Should().BeFalse();
     }
 }

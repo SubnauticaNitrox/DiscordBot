@@ -1,4 +1,6 @@
-﻿using Discord;
+﻿using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
+using Discord;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using NitroxDiscordBot.Core;
@@ -13,6 +15,7 @@ public class AutoResponseService : DiscordBotHostedService
 {
     private readonly IFusionCache cache;
     private readonly BotContext db;
+    private readonly ConcurrentDictionary<EquatableArray<string>, Regex[]> regexByFilterValue = [];
 
     public AutoResponseService(NitroxBotService bot,
         BotContext db,
@@ -100,7 +103,25 @@ public class AutoResponseService : DiscordBotHostedService
                     if (DateTimeOffset.UtcNow - author.JoinedAt > valueTimeSpan) return false;
                     break;
                 case Filter.Types.MessageWordOrder when filter.Value is [_, ..] values:
-                    if (!message.Content.AsSpan().ContainsSentenceWithWordOrderOfAny(values)) return false;
+                    // TODO: Clear cache of unused regexes
+                    EquatableArray<string> equatableValues = new(values);
+                    if (!regexByFilterValue.TryGetValue(equatableValues, out Regex[] regexes))
+                    {
+                        regexByFilterValue[equatableValues] = regexes = values.CreateRegexesForAnyWordGroupInOrderInSentence();
+                    }
+                    bool anyMatch = false;
+                    foreach (Regex regex in regexes)
+                    {
+                        if (regex.IsMatch(message.Content))
+                        {
+                            anyMatch = true;
+                            break;
+                        }
+                    }
+                    if (!anyMatch)
+                    {
+                        return false;
+                    }
                     break;
                 default:
                     Log.UnhandledFilterType(filter.Type, filter.Value);

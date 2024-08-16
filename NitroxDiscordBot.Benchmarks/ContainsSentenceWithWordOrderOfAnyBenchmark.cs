@@ -1,33 +1,46 @@
+using System.Text.RegularExpressions;
 using BenchmarkDotNet.Attributes;
 
 namespace NitroxDiscordBot.Benchmarks;
 
 [MemoryDiagnoser]
-public class ContainsSentenceWithWordOrderOfAnyBenchmark
+public partial class ContainsSentenceWithWordOrderOfAnyBenchmark
 {
-    private const string Text =
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec nec libero at nibh tristique viverra non non felis.";
-    private static readonly char[] sentenceSplitCharacters = ['.', '!', '?', '"', '`', ':'];
-    private static readonly string[] wordPatterns = ["non non felis"];
+    private const string RegexPattern = @"^.*\b(play)\b[^.!?:;`\n]*\b(game|subnautica)\b[^.!?:;`\n]*\b(me)\b";
 
-    [Benchmark(Baseline = true, Description = "Span")]
-    public bool ContainsWordOrderOfAnyInSentenceOrderOfAny_Span()
+    private const RegexOptions RegexDefaultOptions =
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking;
+
+    private const string Text = "Can anyone help me? I would like to play the game subnautica, anyone with me?";
+
+    private static Regex interpretedRegex;
+    private static Regex compiledRegex;
+
+    [GeneratedRegex(RegexPattern, RegexDefaultOptions)]
+    private static partial Regex Regex();
+
+    [GlobalSetup]
+    public void Setup()
     {
-        return Text.AsSpan().ContainsSentenceWithWordOrderOfAny(wordPatterns);
+        interpretedRegex = new Regex(RegexPattern, RegexDefaultOptions);
+        compiledRegex = new Regex(RegexPattern, RegexDefaultOptions | RegexOptions.Compiled);
     }
 
-    [Benchmark(Description = "String")]
-    public bool ContainsWordOrderOfAnyInSentenceOrderOfAny_String()
+    [Benchmark(Baseline = true)]
+    public bool Interpreted()
     {
-        string[] sentences = Text.Split(sentenceSplitCharacters,
-            StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        foreach (string sentence in sentences)
-        {
-            if (sentence.AsSpan().ContainsWordsInOrder(wordPatterns[0]))
-            {
-                return true;
-            }
-        }
-        return false;
+        return interpretedRegex.IsMatch(Text);
+    }
+
+    [Benchmark]
+    public bool Compiled()
+    {
+        return compiledRegex.IsMatch(Text);
+    }
+
+    [Benchmark]
+    public bool SourceGen()
+    {
+        return Regex().IsMatch(Text);
     }
 }

@@ -42,7 +42,15 @@ public static class FilterExtensions
                 break;
             case Types.UserJoinAge when values is [_] && TimeSpan.TryParse(values[0], out TimeSpan _):
                 break;
-            case Types.MessageWordOrder:
+            case Types.MessageWordOrder when values is [_, ..]:
+                try
+                {
+                    values.CreateRegexesForAnyWordGroupInOrderInSentence();
+                }
+                catch (Exception ex)
+                {
+                    return ($"Error occurred parsing filter value filter type `{Types.MessageWordOrder.ToString()}`: **{ex.Message}**", []);
+                }
                 break;
             default:
                 return ($"Unsupported value `{value}` for filter type `{filter.Type}`", []);
