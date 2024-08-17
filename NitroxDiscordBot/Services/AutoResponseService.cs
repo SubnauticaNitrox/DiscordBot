@@ -109,16 +109,7 @@ public class AutoResponseService : DiscordBotHostedService
                     {
                         regexByFilterValue[equatableValues] = regexes = values.CreateRegexesForAnyWordGroupInOrderInSentence();
                     }
-                    bool anyMatch = false;
-                    foreach (Regex regex in regexes)
-                    {
-                        if (regex.IsMatch(message.Content))
-                        {
-                            anyMatch = true;
-                            break;
-                        }
-                    }
-                    if (!anyMatch)
+                    if (!regexes.AnyTrue(static (r, content) => r.IsMatch(content), message.Content))
                     {
                         return false;
                     }
