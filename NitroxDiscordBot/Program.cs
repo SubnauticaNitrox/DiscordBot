@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using NitroxDiscordBot.Configuration;
 using NitroxDiscordBot.Db;
 using NitroxDiscordBot.Services;
-using ZiggyCreatures.Caching.Fusion;
 
 if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") is null)
 {
@@ -35,11 +34,9 @@ services.Configure<HostOptions>(options =>
 services.AddLogging(opt =>
 {
     opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff ");
-    opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", builder.Environment.IsDevelopment() ? LogLevel.Information : LogLevel.Warning);
-    opt.AddFilter($"{nameof(ZiggyCreatures)}.{nameof(ZiggyCreatures.Caching)}", LogLevel.Information);
+    opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", LogLevel.Warning);
 });
-services.AddFusionCache()
-    .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5));
+services.AddMemoryCache();
 // Don't use Scoped lifetime for DbContext as the services are singleton, not Scoped/Transient.
 services.AddDbContext<BotContext>(options =>
 {

@@ -1,26 +1,24 @@
-﻿using System.Collections.Concurrent;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Discord;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using NitroxDiscordBot.Core;
 using NitroxDiscordBot.Db;
 using NitroxDiscordBot.Db.Models;
-using ZiggyCreatures.Caching.Fusion;
 using static NitroxDiscordBot.Db.Models.AutoResponse;
 
 namespace NitroxDiscordBot.Services;
 
 public class AutoResponseService : DiscordBotHostedService
 {
-    private readonly IFusionCache cache;
+    private readonly IMemoryCache cache;
     private readonly BotContext db;
-    private readonly ConcurrentDictionary<EquatableArray<string>, Regex[]> regexByFilterValue = [];
 
     public AutoResponseService(NitroxBotService bot,
         BotContext db,
         ILogger<AutoResponseService> log,
-        IFusionCache cache) : base(bot, log)
+        IMemoryCache cache) : base(bot, log)
     {
         ArgumentNullException.ThrowIfNull(db);
         this.db = db;
@@ -51,13 +49,14 @@ public class AutoResponseService : DiscordBotHostedService
 
     private async Task ModerateMessageAsync(SocketGuildUser author, SocketMessage message)
     {
-        var arDefinitions = await cache.GetOrSetAsync($"database.{nameof(db.AutoResponses)}", async ct =>
+        var arDefinitions = await cache.GetOrCreate($"database.{nameof(db.AutoResponses)}", async entry =>
         {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(5);
             return await db.AutoResponses
                 .Select(ar => new { ar.Name, ar.Responses, ar.Filters })
                 .AsSingleQuery()
-                .ToArrayAsync(cancellationToken: ct);
-        }, options => options.Duration = TimeSpan.FromSeconds(5));
+                .ToArrayAsync();
+        });
         foreach (var definition in arDefinitions)
         {
             if (!MatchesFilters(definition.Filters, author, message)) continue;
@@ -103,12 +102,14 @@ public class AutoResponseService : DiscordBotHostedService
                     if (DateTimeOffset.UtcNow - author.JoinedAt > valueTimeSpan) return false;
                     break;
                 case Filter.Types.MessageWordOrder when filter.Value is [_, ..] values:
-                    // TODO: Clear cache of unused regexes
-                    EquatableArray<string> equatableValues = new(values);
-                    if (!regexByFilterValue.TryGetValue(equatableValues, out Regex[] regexes))
+                    string cacheKey = cache.CreateKey("filters-word-order", values);
+                    Regex[] regexes = cache.Get<Regex[]>(cacheKey);
+                    if (regexes == null)
                     {
-                        regexByFilterValue[equatableValues] = regexes = values.CreateRegexesForAnyWordGroupInOrderInSentence();
+                        regexes = values.CreateRegexesForAnyWordGroupInOrderInSentence();
+                        cache.Set(cacheKey, regexes, new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromDays(1) });
                     }
+
                     if (!regexes.AnyTrue(static (r, content) => r.IsMatch(content), message.Content))
                     {
                         return false;

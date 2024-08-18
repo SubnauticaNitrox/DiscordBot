@@ -9,13 +9,15 @@
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <OutputType>Exe</OutputType>
         <ServerGarbageCollection>true</ServerGarbageCollection>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Cronos" Version="0.7.1"/>
         <PackageReference Include="Discord.Net" Version="3.15.3" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="8.6.0" />
-        <PackageReference Include="ZiggyCreatures.FusionCache" Version="1.3.0" />
+        <PackageReference Include="ZString" Version="2.6.0" />
     </ItemGroup>
 
     <ItemGroup>
