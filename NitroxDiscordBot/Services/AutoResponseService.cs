@@ -49,14 +49,15 @@ public class AutoResponseService : DiscordBotHostedService
 
     private async Task ModerateMessageAsync(SocketGuildUser author, SocketMessage message)
     {
-        var arDefinitions = await cache.GetOrCreate($"database.{nameof(db.AutoResponses)}", async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(5);
-            return await db.AutoResponses
-                .Select(ar => new { ar.Name, ar.Responses, ar.Filters })
-                .AsSingleQuery()
-                .ToArrayAsync();
-        });
+        var arDefinitions = await cache.GetOrCreate($"database.{nameof(db.AutoResponses)}",
+            static async (entry, autoResponses) =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(5);
+                return await autoResponses
+                    .Select(ar => new { ar.Name, ar.Responses, ar.Filters })
+                    .AsSingleQuery()
+                    .ToArrayAsync();
+            }, db.AutoResponses);
         foreach (var definition in arDefinitions)
         {
             if (!MatchesFilters(definition.Filters, author, message)) continue;

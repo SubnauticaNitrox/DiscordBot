@@ -26,6 +26,19 @@ public static class MemoryCacheExtensions
         return refSb.ToString();
     }
 
+    public static TItem GetOrCreate<TItem, TParam>(this IMemoryCache cache, object key, Func<ICacheEntry, TParam, TItem> factory, TParam param)
+    {
+        if (!cache.TryGetValue(key, out TItem result))
+        {
+            using ICacheEntry entry = cache.CreateEntry(key);
+
+            result = factory(entry, param);
+            entry.Value = result;
+        }
+
+        return result;
+    }
+
     private static void AppendObject<T>(this ref Utf16ValueStringBuilder sb, ref T value)
     {
         switch (value)
