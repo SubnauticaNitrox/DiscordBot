@@ -39,6 +39,19 @@ public static class MemoryCacheExtensions
         return result;
     }
 
+    public static async Task<TItem> GetOrCreateAsync<TItem, TParam>(this IMemoryCache cache, object key, Func<ICacheEntry, TParam, Task<TItem>> factory, TParam param)
+    {
+        if (!cache.TryGetValue(key, out TItem result))
+        {
+            using ICacheEntry entry = cache.CreateEntry(key);
+
+            result = await factory(entry, param);
+            entry.Value = result;
+        }
+
+        return result;
+    }
+
     private static void AppendObject<T>(this ref Utf16ValueStringBuilder sb, ref T value)
     {
         switch (value)

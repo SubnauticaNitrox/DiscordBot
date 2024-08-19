@@ -49,7 +49,7 @@ public class AutoResponseService : DiscordBotHostedService
 
     private async Task ModerateMessageAsync(SocketGuildUser author, SocketMessage message)
     {
-        var arDefinitions = await cache.GetOrCreate($"database.{nameof(db.AutoResponses)}",
+        var arDefinitions = await cache.GetOrCreateAsync($"database.{nameof(db.AutoResponses)}",
             static async (entry, autoResponses) =>
             {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(5);
@@ -103,13 +103,11 @@ public class AutoResponseService : DiscordBotHostedService
                     if (DateTimeOffset.UtcNow - author.JoinedAt > valueTimeSpan) return false;
                     break;
                 case Filter.Types.MessageWordOrder when filter.Value is [_, ..] values:
-                    string cacheKey = cache.CreateKey("filters-word-order", values);
-                    Regex[] regexes = cache.Get<Regex[]>(cacheKey);
-                    if (regexes == null)
+                    Regex[] regexes = cache.GetOrCreate(cache.CreateKey("filters-word-order", values), static (entry, data) =>
                     {
-                        regexes = values.CreateRegexesForAnyWordGroupInOrderInSentence();
-                        cache.Set(cacheKey, regexes, new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromDays(1) });
-                    }
+                        entry.SlidingExpiration = TimeSpan.FromDays(1);
+                        return data.CreateRegexesForAnyWordGroupInOrderInSentence();
+                    }, values);
 
                     if (!regexes.AnyTrue(static (r, content) => r.IsMatch(content), message.Content))
                     {
