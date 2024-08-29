@@ -14,14 +14,17 @@ public class AutoResponseService : DiscordBotHostedService
 {
     private readonly IMemoryCache cache;
     private readonly BotContext db;
+    private readonly TaskQueueService taskQueue;
 
     public AutoResponseService(NitroxBotService bot,
         BotContext db,
         ILogger<AutoResponseService> log,
+        TaskQueueService taskQueue,
         IMemoryCache cache) : base(bot, log)
     {
         ArgumentNullException.ThrowIfNull(db);
         this.db = db;
+        this.taskQueue = taskQueue;
         this.cache = cache;
     }
 
@@ -128,14 +131,16 @@ public class AutoResponseService : DiscordBotHostedService
         SocketGuildUser authorToReport,
         SocketMessage messageToReport)
     {
-        try
-        {
-            await userToNotify.SendMessageAsync(
-                $"[{nameof(AutoResponse)} {responseName}] {authorToReport.Mention} said {messageToReport.GetJumpUrl()}:{Environment.NewLine}{messageToReport.Content}");
-        }
-        catch (Exception ex)
-        {
-            Log.DmReportError(ex, messageToReport.GetJumpUrl(), userToNotify.Username);
-        }
+        await taskQueue.EnqueueAsync(userToNotify
+            .SendMessageAsync(
+                $"[{nameof(AutoResponse)} {responseName}] {authorToReport.Mention} said {messageToReport.GetJumpUrl()}:{Environment.NewLine}{messageToReport.Content}")
+            .ContinueWith(
+                t =>
+                {
+                    if (t.IsFaulted)
+                    {
+                        Log.DmReportError(t.Exception, messageToReport.GetJumpUrl(), userToNotify.Username);
+                    }
+                }));
     }
 }

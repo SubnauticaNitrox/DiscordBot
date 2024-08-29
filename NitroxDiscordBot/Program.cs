@@ -46,6 +46,7 @@ services.AddDbContext<BotContext>(options =>
         options.EnableSensitiveDataLogging();
     }
 }, contextLifetime: ServiceLifetime.Transient, optionsLifetime: ServiceLifetime.Transient);
+services.AddHostedSingleton<TaskQueueService>();
 services.AddHostedSingleton<NitroxBotService>();
 services.AddHostedSingleton<CommandHandlerService>();
 services.AddHostedSingleton<AutoResponseService>();
