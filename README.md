@@ -26,6 +26,7 @@ https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permission
 ## Features
  - Purging channels of "old" messages (configure with `/cleanup`)
  - Auto respond to user messages (configure with `/autoresponse`)
+ - Submits to a [Ntfy server](https://github.com/binwiederhier/ntfy) on a topic with same name as the Auto Response
 ### Backend features
  - Sqlite database - which is stored in `/app/data/nitroxbot.db`. Docker mount the `/app/data` directory somewhere on your host to reuse the database. Otherwise, the database is gone when the docker container is deleted and you need to reconfigure the bot again.
 
@@ -34,8 +35,12 @@ https://discord.com/api/oauth2/authorize?client_id=405122994348752896&permission
 {
     "Token": "DISCORD_TOKEN_HERE",
     "GuildId": MY_SERVER_ID_HERE,
-    "Developers": [MY_DISCORD_USER_ID]
+    "Developers": [MY_DISCORD_USER_ID],
+    "Ntfy": {
+        "Url": "URL TO NTFY HERE"
+    }
 }
 ```
  - GuildId is needed as this bot is meant to manage only 1 server at a time.
  - Developers field is optional but gives you super admin access to the commands of the bot, no matter the Discord server.
+ - Ntfy configuration is optional. If invalid, Ntfy submits will be skipped.

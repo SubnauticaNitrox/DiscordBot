@@ -41,4 +41,19 @@ public class StringExtensionsTest
         regexes[0].IsMatch("game play").Should().BeFalse();
         regexes[0].IsMatch("game play me").Should().BeFalse();
     }
+
+    [TestMethod]
+    public void TestLimit()
+    {
+        "".Limit(100).Should().Be("");
+        "".Limit(-1).Should().Be("");
+        "Hello, world!".Limit(4).Should().Be("Hell");
+        "Hello".Limit(4, "...").Should().Be("H...");
+        "Hel".Limit(4, "...").Should().Be("H...");
+        "H".Limit(4, "...").Should().Be("H...");
+        "".Limit(4, "...").Should().Be("...");
+        "".Limit(4).Should().Be("");
+        "".Limit(1).Should().Be("");
+        "".Limit(1, "..").Should().Be(".");
+    }
 }

@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using NitroxDiscordBot.Configuration;
 using NitroxDiscordBot.Db;
 using NitroxDiscordBot.Services;
+using NitroxDiscordBot.Services.Ntfy;
 
 if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") is null)
 {
@@ -24,6 +26,7 @@ if (builder.Environment.IsDevelopment()) config.AddJsonFile("appsettings.Develop
 
 // Validation
 services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
+services.AddOptions<NtfyConfig>().Bind(config.GetSection("Ntfy")).ValidateDataAnnotations().ValidateOnStart();
 
 // Services
 services.Configure<HostOptions>(options =>
@@ -46,8 +49,20 @@ services.AddDbContext<BotContext>(options =>
         options.EnableSensitiveDataLogging();
     }
 }, contextLifetime: ServiceLifetime.Transient, optionsLifetime: ServiceLifetime.Transient);
-services.AddHostedSingleton<TaskQueueService>();
+services.AddHttpClient<INtfyService, INtfyService>((client, provider) =>
+{
+    try
+    {
+        return new NtfyService(client, provider.GetRequiredService<IOptions<NtfyConfig>>());
+    }
+    catch
+    {
+        return new NopNtfyService();
+    }
+}).SetHandlerLifetime(TimeSpan.FromMinutes(5));
+// Domain services
 services.AddHostedSingleton<NitroxBotService>();
+services.AddHostedSingleton<TaskQueueService>();
 services.AddHostedSingleton<CommandHandlerService>();
 services.AddHostedSingleton<AutoResponseService>();
 services.AddHostedSingleton<ChannelCleanupService>();

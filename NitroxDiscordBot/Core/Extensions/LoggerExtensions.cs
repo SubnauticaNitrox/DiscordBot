@@ -82,4 +82,9 @@ public static partial class LoggerExtensions
         Exception exception,
         ulong discordUserId,
         string discordUsername);
+
+    [LoggerMessage(LogLevel.Error, Message = "Ntfy error occurred with url {Url}")]
+    public static partial void NtfyError(this ILogger logger,
+        Exception exception,
+        string url);
 }

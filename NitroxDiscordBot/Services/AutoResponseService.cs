@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NitroxDiscordBot.Core;
 using NitroxDiscordBot.Db;
 using NitroxDiscordBot.Db.Models;
+using NitroxDiscordBot.Services.Ntfy;
 using static NitroxDiscordBot.Db.Models.AutoResponse;
 
 namespace NitroxDiscordBot.Services;
@@ -13,6 +14,7 @@ namespace NitroxDiscordBot.Services;
 public class AutoResponseService : DiscordBotHostedService
 {
     private readonly IMemoryCache cache;
+    private readonly INtfyService ntfy;
     private readonly BotContext db;
     private readonly TaskQueueService taskQueue;
 
@@ -20,12 +22,14 @@ public class AutoResponseService : DiscordBotHostedService
         BotContext db,
         ILogger<AutoResponseService> log,
         TaskQueueService taskQueue,
+        INtfyService ntfy,
         IMemoryCache cache) : base(bot, log)
     {
         ArgumentNullException.ThrowIfNull(db);
         this.db = db;
         this.taskQueue = taskQueue;
         this.cache = cache;
+        this.ntfy = ntfy;
     }
 
     public override Task StartAsync(CancellationToken cancellationToken)
@@ -66,6 +70,19 @@ public class AutoResponseService : DiscordBotHostedService
             if (!MatchesFilters(definition.Filters, author, message)) continue;
 
             Log.AutoResponseTriggered(definition.Name, message.GetJumpUrl(), author.Username, author.Id);
+            string messageJumpUrl = message.GetJumpUrl();
+            string messageContent = message.Content.Limit(100, "...");
+            // Always send message to Ntfy as only those subscribed to the topic will receive them.
+            await taskQueue.EnqueueAsync(ntfy.SendMessageWithTitleAndUrl(INtfyService.AsTopicName(definition.Name),
+                $"{author.Username} (#{author.Id}) said", messageContent, "Open Discord",
+                messageJumpUrl).ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                {
+                    Log.NtfyError(t.Exception, ntfy.Url.ToString());
+                }
+            }));
+            // Send message to other outputs.
             foreach (Response response in definition.Responses)
             {
                 switch (response.Type)
@@ -74,14 +91,14 @@ public class AutoResponseService : DiscordBotHostedService
                         ArraySegment<ulong> roles = response.Value.OfParsable<ulong>();
                         foreach (SocketGuildUser user in Bot.GetUsersWithAnyRoles(author.Guild, roles))
                         {
-                            await NotifyModeratorAsync(user, definition.Name, author, message);
+                            await NotifyModeratorAsync(user, definition.Name, author, messageJumpUrl, messageContent);
                         }
                         break;
                     case Response.Types.MessageUsers:
                         ArraySegment<ulong> userIds = response.Value.OfParsable<ulong>();
                         foreach (IGuildUser user in await Bot.GetUsersByIdsAsync(author.Guild, userIds))
                         {
-                            await NotifyModeratorAsync(user, definition.Name, author, message);
+                            await NotifyModeratorAsync(user, definition.Name, author, messageJumpUrl, messageContent);
                         }
                         break;
                     default:
@@ -129,17 +146,18 @@ public class AutoResponseService : DiscordBotHostedService
     private async Task NotifyModeratorAsync(IGuildUser userToNotify,
         string responseName,
         SocketGuildUser authorToReport,
-        SocketMessage messageToReport)
+        string messageJumpUrl,
+        string message)
     {
         await taskQueue.EnqueueAsync(userToNotify
             .SendMessageAsync(
-                $"[{nameof(AutoResponse)} {responseName}] {authorToReport.Mention} said {messageToReport.GetJumpUrl()}:{Environment.NewLine}{messageToReport.Content}")
+                $"[{nameof(AutoResponse)} {responseName}] {authorToReport.Mention} said {messageJumpUrl}:{Environment.NewLine}{message}")
             .ContinueWith(
                 t =>
                 {
                     if (t.IsFaulted)
                     {
-                        Log.DmReportError(t.Exception, messageToReport.GetJumpUrl(), userToNotify.Username);
+                        Log.DmReportError(t.Exception,messageJumpUrl, userToNotify.Username);
                     }
                 }));
     }

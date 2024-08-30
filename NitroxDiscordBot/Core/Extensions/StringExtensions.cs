@@ -108,4 +108,25 @@ public static partial class StringExtensions
         }
         return false;
     }
+
+    public static string Limit(this string value, int limit, string postfix = "")
+    {
+        if (value == null || limit < 0)
+        {
+            return "";
+        }
+        if (postfix is null)
+        {
+            postfix = "";
+        }
+        if (postfix.Length > limit)
+        {
+            postfix = postfix.Substring(0, Math.Min(limit, postfix.Length));
+        }
+        if (value.Length > limit || value.Length - postfix.Length < postfix.Length)
+        {
+            value = value.Substring(0, Math.Min(value.Length, Math.Max(limit - postfix.Length, 0))) + postfix;
+        }
+        return value;
+    }
 }
