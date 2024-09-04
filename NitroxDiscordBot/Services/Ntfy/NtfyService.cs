@@ -21,12 +21,12 @@ public sealed class NtfyService : INtfyService
         {
             throw new ArgumentException($"{nameof(Ntfy)} {nameof(url)} is empty");
         }
-        client.BaseAddress = Url = new Uri(url);
+        client.BaseAddress = new Uri(url);
         client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(nameof(NitroxDiscordBot),
             typeof(NtfyService).Assembly.GetName().Version?.ToString() ?? "1.0.0.0"));
     }
 
-    public Uri Url { get; }
+    public Uri Url => client.BaseAddress;
 
     public Task SendMessageAsync(string topic, string message)
     {
