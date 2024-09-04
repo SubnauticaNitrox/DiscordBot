@@ -15,13 +15,11 @@ public sealed class NtfyService : INtfyService
     {
         ArgumentNullException.ThrowIfNull(client, nameof(client));
         ArgumentNullException.ThrowIfNull(config, nameof(config));
+        NtfyConfig configValue = config.Value;
+        ArgumentException.ThrowIfNullOrWhiteSpace(configValue.Url, nameof(configValue.Url));
+
         this.client = client;
-        string url = config.Value.Url;
-        if (string.IsNullOrEmpty(url))
-        {
-            throw new ArgumentException($"{nameof(Ntfy)} {nameof(url)} is empty");
-        }
-        client.BaseAddress = new Uri(url);
+        client.BaseAddress = new Uri(configValue.Url);
         client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(nameof(NitroxDiscordBot),
             typeof(NtfyService).Assembly.GetName().Version?.ToString() ?? "1.0.0.0"));
     }

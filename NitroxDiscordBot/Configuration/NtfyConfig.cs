@@ -1,6 +1,9 @@
-﻿namespace NitroxDiscordBot.Configuration;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace NitroxDiscordBot.Configuration;
 
 public class NtfyConfig
 {
-    public string Url { get; set; } = "";
+    [Url]
+    public string Url { get; set; }
 }
