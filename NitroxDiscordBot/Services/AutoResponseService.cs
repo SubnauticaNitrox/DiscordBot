@@ -32,10 +32,17 @@ public class AutoResponseService : DiscordBotHostedService
         this.ntfy = ntfy;
     }
 
-    public override Task StartAsync(CancellationToken cancellationToken)
+    public override async Task StartAsync(CancellationToken cancellationToken)
     {
         Bot.MessageReceived += BotOnMessageReceived;
-        return Task.CompletedTask;
+        if (await ntfy.IsAvailable())
+        {
+            Log.LogInformation("Ntfy at {0} is available", ntfy.Url);
+        }
+        else
+        {
+            Log.LogWarning("Ntfy is not available at {0}", ntfy.Url);
+        }
     }
 
     public override Task StopAsync(CancellationToken cancellationToken)

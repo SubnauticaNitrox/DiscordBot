@@ -57,4 +57,19 @@ public sealed class NtfyService : INtfyService
         content.Headers.Add("Actions", $"view, {urlLabel}, {url}");
         return client.PostAsync(topic, content);
     }
+
+    public async Task<bool> IsAvailable()
+    {
+        try
+        {
+            using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
+            using HttpRequestMessage request = new(HttpMethod.Head, Url);
+            await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

@@ -21,4 +21,9 @@ public sealed class NopNtfyService : INtfyService
     {
         return Task.CompletedTask;
     }
+
+    public Task<bool> IsAvailable()
+    {
+        return Task.FromResult(false);
+    }
 }
