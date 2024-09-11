@@ -115,10 +115,7 @@ public static partial class StringExtensions
         {
             return "";
         }
-        if (postfix is null)
-        {
-            postfix = "";
-        }
+        postfix ??= "";
         if (postfix.Length > limit)
         {
             postfix = postfix.Substring(0, Math.Min(limit, postfix.Length));

@@ -7,6 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionFolder", "SolutionF
 		README.md = README.md
 		.editorconfig = .editorconfig
 		.gitignore = .gitignore
+		Directory.Build.props = Directory.Build.props
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NitroxDiscordBot.Db", "NitroxDiscordBot.Db\NitroxDiscordBot.Db.csproj", "{FF39B0B9-8AE6-4B3E-8EDD-3B0DD9FCDB12}"

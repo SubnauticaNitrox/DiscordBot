@@ -26,36 +26,17 @@ public sealed class NtfyService : INtfyService
 
     public Uri Url => client.BaseAddress;
 
-    public Task SendMessageAsync(string topic, string message)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message);
-        using StringContent content = new(message);
-        return client.PostAsync(topic, content);
-    }
-
-    public Task SendMessageWithUrl(string topic, string message, string urlLabel, string url)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message);
-        ArgumentException.ThrowIfNullOrWhiteSpace(urlLabel);
-        ArgumentException.ThrowIfNullOrWhiteSpace(url);
-        using StringContent content = new(message);
-        content.Headers.Add("Actions", $"view, {urlLabel}, {url}");
-        return client.PostAsync(topic, content);
-    }
-
-    public Task SendMessageWithTitleAndUrl(string topic, string title, string message, string urlLabel, string url)
+    public async Task SendMessageAsync(string topic, string message, string title, string urlLabel, string url)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
         ArgumentException.ThrowIfNullOrWhiteSpace(urlLabel);
         ArgumentException.ThrowIfNullOrWhiteSpace(url);
-        using StringContent content = new(message);
+        StringContent content = new(message);
         content.Headers.Add("Title", title);
         content.Headers.Add("Actions", $"view, {urlLabel}, {url}");
-        return client.PostAsync(topic, content);
+        using HttpResponseMessage response = await client.PostAsync(topic, content);
     }
 
     public async Task<bool> IsAvailable()
@@ -64,7 +45,7 @@ public sealed class NtfyService : INtfyService
         {
             using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
             using HttpRequestMessage request = new(HttpMethod.Head, Url);
-            await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
             return true;
         }
         catch

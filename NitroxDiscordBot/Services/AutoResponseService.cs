@@ -72,23 +72,30 @@ public class AutoResponseService : DiscordBotHostedService
                     .AsSingleQuery()
                     .ToArrayAsync();
             }, db.AutoResponses);
+
+        bool isFirstTrigger = true;
         foreach (var definition in arDefinitions)
         {
             if (!MatchesFilters(definition.Filters, author, message)) continue;
 
-            Log.AutoResponseTriggered(definition.Name, message.GetJumpUrl(), author.Username, author.Id);
             string messageJumpUrl = message.GetJumpUrl();
             string messageContent = message.Content.Limit(100, "...");
-            // Always send message to Ntfy as only those subscribed to the topic will receive them.
-            await taskQueue.EnqueueAsync(ntfy.SendMessageWithTitleAndUrl(INtfyService.AsTopicName(definition.Name),
-                $"{author.Username} (#{author.Id}) said", messageContent, "Open Discord",
-                messageJumpUrl).ContinueWith(t =>
+            if (isFirstTrigger)
             {
-                if (t.IsFaulted)
+                Log.AutoResponseTriggered(definition.Name, message.GetJumpUrl(), author.Username, author.Id);
+                isFirstTrigger = false;
+                // Always send message to Ntfy as only those subscribed to the topic will receive them.
+                await taskQueue.EnqueueAsync(ntfy.SendMessageAsync(INtfyService.AsTopicName(definition.Name),
+                    messageContent, $"{author.Username} (#{author.Id}) said", "Open Discord",
+                    messageJumpUrl).ContinueWith(t =>
                 {
-                    Log.NtfyError(t.Exception, ntfy.Url.ToString());
-                }
-            }));
+                    if (t.IsFaulted)
+                    {
+                        Log.NtfyError(t.Exception, ntfy.Url.ToString());
+                    }
+                }));
+            }
+
             // Send message to other outputs.
             foreach (Response response in definition.Responses)
             {
