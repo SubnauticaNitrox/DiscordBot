@@ -13,10 +13,6 @@ public static class ArrayExtensions
                 break;
             }
         }
-        if (!anyMatch)
-        {
-            return false;
-        }
-        return true;
+        return anyMatch;
     }
 }
