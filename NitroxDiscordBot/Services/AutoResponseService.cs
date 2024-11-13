@@ -14,8 +14,8 @@ namespace NitroxDiscordBot.Services;
 public class AutoResponseService : DiscordBotHostedService
 {
     private readonly IMemoryCache cache;
-    private readonly INtfyService ntfy;
     private readonly BotContext db;
+    private readonly INtfyService ntfy;
     private readonly TaskQueueService taskQueue;
 
     public AutoResponseService(NitroxBotService bot,
@@ -137,11 +137,12 @@ public class AutoResponseService : DiscordBotHostedService
                     if (DateTimeOffset.UtcNow - author.JoinedAt > valueTimeSpan) return false;
                     break;
                 case Filter.Types.MessageWordOrder when filter.Value is [_, ..] values:
-                    Regex[] regexes = cache.GetOrCreate(cache.CreateKey("filters-word-order", values), static (entry, data) =>
-                    {
-                        entry.SlidingExpiration = TimeSpan.FromDays(1);
-                        return data.CreateRegexesForAnyWordGroupInOrderInSentence();
-                    }, values);
+                    Regex[] regexes = cache.GetOrCreate(cache.CreateKey("filters-word-order", values),
+                        static (entry, data) =>
+                        {
+                            entry.SlidingExpiration = TimeSpan.FromDays(1);
+                            return data.CreateRegexesForAnyWordGroupInOrderInSentence();
+                        }, values);
 
                     if (!regexes.AnyTrue(static (r, content) => r.IsMatch(content), message.Content))
                     {
@@ -171,7 +172,7 @@ public class AutoResponseService : DiscordBotHostedService
                 {
                     if (t.IsFaulted)
                     {
-                        Log.DmReportError(t.Exception,messageJumpUrl, userToNotify.Username);
+                        Log.DmReportError(t.Exception, messageJumpUrl, userToNotify.Username);
                     }
                 }));
     }

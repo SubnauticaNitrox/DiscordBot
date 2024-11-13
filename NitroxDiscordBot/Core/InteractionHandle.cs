@@ -10,7 +10,7 @@ namespace NitroxDiscordBot.Core;
 /// </summary>
 public record InteractionHandle : IDisposable
 {
-    private static readonly object registeryLock = new();
+    private static readonly Lock registeryLock = new();
 
     /// <summary>
     ///     Registery of all interaction handles which can receive signals and are currently active.

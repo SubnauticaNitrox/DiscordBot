@@ -26,8 +26,7 @@ public static class ResponseExtensions
         switch (response.Type)
         {
             case Types.MessageRoles:
-                IEnumerable<SocketRole> roles = bot.GetRolesByIds(guild as SocketGuild,
-                    values.OfParsable<ulong>().ToArray());
+                IEnumerable<SocketRole> roles = bot.GetRolesByIds(guild as SocketGuild, values.OfParsable<ulong>());
                 string[] missingRoles = values.ExceptBy(roles.Select(u => u.Id.ToString()), s => s).ToArray();
                 if (missingRoles.Any())
                 {
@@ -36,8 +35,7 @@ public static class ResponseExtensions
                 }
                 break;
             case Types.MessageUsers:
-                List<IGuildUser> users = await bot.GetUsersByIdsAsync(guild,
-                    values.OfParsable<ulong>().ToArray());
+                List<IGuildUser> users = await bot.GetUsersByIdsAsync(guild, values.OfParsable<ulong>());
                 string[] missingUsers = values.ExceptBy(users.Select(u => u.Id.ToString()), s => s).ToArray();
                 if (missingUsers.Any())
                 {
