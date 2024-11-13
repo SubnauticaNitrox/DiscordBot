@@ -105,7 +105,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 sb.AppendLine();
             }
 
-            sb.AppendLine("  - Responses:");
+            sb.AppendLine(" - Responses:");
             foreach (Response response in definition.Responses)
             {
                 sb.Append("   - **").Append(response.Type.GetDescriptionOrName()).Append("**: ");
