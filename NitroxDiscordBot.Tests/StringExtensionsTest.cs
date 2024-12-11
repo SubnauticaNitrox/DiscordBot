@@ -46,6 +46,7 @@ public class StringExtensionsTest
     public void TestLimit()
     {
         "".Limit(100).Should().Be("");
+        "".Limit(0).Should().Be("");
         "".Limit(-1).Should().Be("");
         "Hello, world!".Limit(4).Should().Be("Hell");
         "Hello".Limit(4, "...").Should().Be("H...");
@@ -55,5 +56,6 @@ public class StringExtensionsTest
         "".Limit(4).Should().Be("");
         "".Limit(1).Should().Be("");
         "".Limit(1, "..").Should().Be(".");
+        "".Limit(2, "_._").Should().Be("_.");
     }
 }

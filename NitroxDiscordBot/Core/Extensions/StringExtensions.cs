@@ -111,19 +111,23 @@ public static partial class StringExtensions
 
     public static string Limit(this string value, int limit, string postfix = "")
     {
-        if (value == null || limit < 0)
+        if (value == null || limit <= 0)
         {
             return "";
         }
         postfix ??= "";
-        if (postfix.Length > limit)
+        if (value.Length + postfix.Length <= limit)
         {
-            postfix = postfix.Substring(0, Math.Min(limit, postfix.Length));
+            if (postfix.Length == 0)
+            {
+                return value;
+            }
+            return value + postfix;
         }
-        if (value.Length > limit || value.Length - postfix.Length < postfix.Length)
-        {
-            value = value.Substring(0, Math.Min(value.Length, Math.Max(limit - postfix.Length, 0))) + postfix;
-        }
-        return value;
+        // Truncate value so it fits within limit when postfix is appended.
+        value = value[..Math.Max(0, limit - postfix.Length)];
+        // Truncate postfix if it's larger than the limit when <truncated value> + <postfix> (e.g. when value is "1", postfix is "..." and limit is 2)
+        postfix = postfix[..Math.Max(0, Math.Min(limit - value.Length, postfix.Length))];
+        return value + postfix;
     }
 }
