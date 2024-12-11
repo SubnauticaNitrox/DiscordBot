@@ -25,14 +25,14 @@ public sealed class TaskQueueService : IHostedService
             {
                 while (!cts.IsCancellationRequested)
                 {
-                    Task task = await tasks.Reader.ReadAsync();
+                    Task task = await tasks.Reader.ReadAsync(cancellationToken);
                     await task;
                 }
             }, cancellationToken);
         }
         catch (OperationCanceledException)
         {
-            // ignored
+            return Task.FromCanceled(cancellationToken);
         }
         return Task.CompletedTask;
     }
