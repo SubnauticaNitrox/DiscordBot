@@ -21,8 +21,14 @@ ConfigurationManager config = builder.Configuration;
 
 // Configuration
 config.AddJsonFile("appsettings.json", true, true);
-if (builder.Environment.IsProduction()) config.AddJsonFile("appsettings.Production.json", true, true);
-if (builder.Environment.IsDevelopment()) config.AddJsonFile("appsettings.Development.json", true, true);
+if (builder.Environment.IsProduction())
+{
+    config.AddJsonFile("appsettings.Production.json", true, true);
+}
+if (builder.Environment.IsDevelopment())
+{
+    config.AddJsonFile("appsettings.Development.json", true, true);
+}
 
 // Validation
 services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
@@ -30,42 +36,40 @@ services.AddOptions<NtfyConfig>().Bind(config.GetSection("Ntfy")).ValidateDataAn
 
 // Services
 services.Configure<HostOptions>(options =>
-{
-    options.ServicesStartConcurrently = true;
-    options.ServicesStopConcurrently = true;
-});
-services.AddLogging(opt =>
-{
-    opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff ");
-    opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", LogLevel.Warning);
-});
-services.AddMemoryCache();
-// Don't use Scoped lifetime for DbContext as the services are singleton, not Scoped/Transient.
-services.AddDbContext<BotContext>(options =>
-{
-    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-    if (builder.Environment.IsDevelopment())
     {
-        options.EnableSensitiveDataLogging();
-    }
-}, contextLifetime: ServiceLifetime.Transient, optionsLifetime: ServiceLifetime.Transient);
-services.AddHttpClient<INtfyService, INtfyService>((client, provider) =>
-{
-    try
+        options.ServicesStartConcurrently = true;
+        options.ServicesStopConcurrently = true;
+    }).AddLogging(opt =>
     {
-        return new NtfyService(client, provider.GetRequiredService<IOptions<NtfyConfig>>());
-    }
-    catch
+        opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff ");
+        opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", LogLevel.Warning);
+    })
+    .AddMemoryCache()
+    // Don't use Scoped lifetime for DbContext as the services are singleton, not Scoped/Transient.
+    .AddDbContext<BotContext>(options =>
     {
-        return new NopNtfyService();
-    }
-}).SetHandlerLifetime(TimeSpan.FromMinutes(5));
-// Domain services
-services.AddHostedSingleton<NitroxBotService>();
-services.AddHostedSingleton<TaskQueueService>();
-services.AddHostedSingleton<CommandHandlerService>();
-services.AddHostedSingleton<AutoResponseService>();
-services.AddHostedSingleton<ChannelCleanupService>();
+        options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+        if (builder.Environment.IsDevelopment())
+        {
+            options.EnableSensitiveDataLogging();
+        }
+    }, ServiceLifetime.Transient, ServiceLifetime.Transient)
+    .AddHttpClient<INtfyService, INtfyService>((client, provider) =>
+    {
+        try
+        {
+            return new NtfyService(client, provider.GetRequiredService<IOptions<NtfyConfig>>());
+        }
+        catch
+        {
+            return new NopNtfyService();
+        }
+    }).SetHandlerLifetime(TimeSpan.FromMinutes(5)).Services
+    .AddHostedSingleton<NitroxBotService>()
+    .AddHostedSingleton<TaskQueueService>()
+    .AddHostedSingleton<CommandHandlerService>()
+    .AddHostedSingleton<AutoResponseService>()
+    .AddHostedSingleton<ChannelCleanupService>();
 
 IHost host = builder.Build();
 // Ensure database is up-to-date
