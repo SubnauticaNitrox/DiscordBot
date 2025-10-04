@@ -14,7 +14,13 @@ if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") is null)
 #endif
 }
 
-HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ApplicationName = "Nitrox Discord Bot",
+    EnvironmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+});
+builder.WebHost.UseKestrelCore();
 
 IServiceCollection services = builder.Services;
 ConfigurationManager config = builder.Configuration;
@@ -29,53 +35,32 @@ if (builder.Environment.IsDevelopment())
 {
     config.AddJsonFile("appsettings.Development.json", true, true);
 }
-
-// Validation
 services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
 services.AddOptions<NtfyConfig>().Bind(config.GetSection("Ntfy")).ValidateDataAnnotations().ValidateOnStart();
+services.Configure<HostOptions>(options =>
+{
+    options.ServicesStartConcurrently = true;
+    options.ServicesStopConcurrently = true;
+});
 
 // Services
-services.Configure<HostOptions>(options =>
-    {
-        options.ServicesStartConcurrently = true;
-        options.ServicesStopConcurrently = true;
-    }).AddLogging(opt =>
-    {
-        opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff ");
-        opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", LogLevel.Warning);
-    })
+services
+    .AddRoutingCore()
     .AddMemoryCache()
-    // Don't use Scoped lifetime for DbContext as the services are singleton, not Scoped/Transient.
-    .AddDbContext<BotContext>(options =>
-    {
-        options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-        if (builder.Environment.IsDevelopment())
-        {
-            options.EnableSensitiveDataLogging();
-        }
-    }, ServiceLifetime.Transient, ServiceLifetime.Transient)
-    .AddHttpClient<INtfyService, INtfyService>((client, provider) =>
-    {
-        try
-        {
-            return new NtfyService(client, provider.GetRequiredService<IOptions<NtfyConfig>>());
-        }
-        catch
-        {
-            return new NopNtfyService();
-        }
-    }).SetHandlerLifetime(TimeSpan.FromMinutes(5)).Services
-    .AddHostedSingleton<NitroxBotService>()
-    .AddHostedSingleton<TaskQueueService>()
-    .AddHostedSingleton<CommandHandlerService>()
-    .AddHostedSingleton<AutoResponseService>()
-    .AddHostedSingleton<ChannelCleanupService>();
+    .AddAppLogging()
+    .AddAppDatabase(builder.Environment.IsDevelopment())
+    .AddAppHttp()
+    .AddAppHealthChecks()
+    .AddAppDomainServices();
 
-IHost host = builder.Build();
+WebApplication host = builder.Build();
 // Ensure database is up-to-date
 using (IServiceScope scope = host.Services.CreateScope())
 {
     BotContext db = scope.ServiceProvider.GetRequiredService<BotContext>();
     db.Database.Migrate();
 }
+
+host.MapHealthChecks("/health");
+host.UseRouting();
 host.Run();
