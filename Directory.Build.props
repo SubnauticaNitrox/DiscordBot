@@ -1,6 +1,5 @@
 <Project>
     <PropertyGroup>
-        <TargetFramework Condition="'$(TargetFramework)' == ''">net10.0</TargetFramework>
         <PathMap>$(MSBuildProjectDirectory)=$(MSBuildProjectName)</PathMap>
         <Nullable>enable</Nullable>
         <Company>Nitrox Team</Company>
