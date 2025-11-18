@@ -50,9 +50,13 @@ public class StringExtensionsTest
         "".Limit(-1).Should().Be("");
         "Hello, world!".Limit(4).Should().Be("Hell");
         "Hello".Limit(4, "...").Should().Be("H...");
+        "Hell".Limit(4, "..").Should().Be("He..");
+        "Hell".Limit(4, "...").Should().Be("H...");
+        "Hell".Limit(4, "....").Should().Be("....");
+        "Hell".Limit(4, ".....").Should().Be("....");
         "Hel".Limit(4, "...").Should().Be("H...");
-        "H".Limit(4, "...").Should().Be("H...");
-        "".Limit(4, "...").Should().Be("...");
+        "H".Limit(4, "...").Should().Be("H");
+        "".Limit(4, "...").Should().Be("");
         "".Limit(4).Should().Be("");
         "".Limit(1).Should().Be("");
         "".Limit(1, "..").Should().Be(".");

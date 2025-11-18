@@ -114,7 +114,7 @@ public static partial class StringExtensions
 
     extension(string? value)
     {
-        public string Limit(int limit, string postfix = "")
+        public string Limit(int limit, string? postfix = "")
         {
             if (value == null || limit <= 0)
             {
@@ -123,11 +123,7 @@ public static partial class StringExtensions
             postfix ??= "";
             if (value.Length + postfix.Length <= limit)
             {
-                if (postfix.Length == 0)
-                {
-                    return value;
-                }
-                return value + postfix;
+                return value;
             }
             // Truncate value so it fits within limit when postfix is appended.
             value = value[..Math.Max(0, limit - postfix.Length)];
