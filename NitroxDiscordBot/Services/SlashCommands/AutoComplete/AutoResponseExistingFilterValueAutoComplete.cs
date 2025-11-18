@@ -29,19 +29,19 @@ public class AutoResponseExistingFilterValueAutoComplete : AutocompleteHandler
     {
         try
         {
-            AutocompleteOption autoResponseNameOption = interaction.GetOption(OptionKeys.AutoResponseName);
+            AutocompleteOption? autoResponseNameOption = interaction.GetOption(OptionKeys.AutoResponseName);
             if (autoResponseNameOption == null)
             {
                 log.AutoCompleteInvalidState(interaction.Data.CommandName);
                 return AutocompletionResult.FromSuccess(); // Internal error, not fault of user
             }
-            AutocompleteOption filterIdOption = interaction.GetOption(OptionKeys.FilterId);
+            AutocompleteOption? filterIdOption = interaction.GetOption(OptionKeys.FilterId);
             if (filterIdOption == null)
             {
                 log.AutoCompleteInvalidState(interaction.Data.CommandName);
                 return AutocompletionResult.FromSuccess(); // Internal error, not fault of user
             }
-            AutoResponse autoResponse = await db.AutoResponses
+            AutoResponse? autoResponse = await db.AutoResponses
                 .Include(ar => ar.Filters)
                 .FirstOrDefaultAsync(ar => ar.Name == autoResponseNameOption.Value.ToString());
             if (autoResponse == null)
@@ -57,7 +57,7 @@ public class AutoResponseExistingFilterValueAutoComplete : AutocompleteHandler
             {
                 int.TryParse(filterIdOption.Value.ToString(), out targetFilterId);
             }
-            AutoResponse.Filter filter = autoResponse.Filters.FirstOrDefault(f => f.FilterId == targetFilterId);
+            AutoResponse.Filter? filter = autoResponse.Filters.FirstOrDefault(f => f.FilterId == targetFilterId);
             if (filter == null)
             {
                 return AutocompletionResult.FromError(InteractionCommandError.Exception, "The requested filter was not found");

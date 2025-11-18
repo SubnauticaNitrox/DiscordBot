@@ -39,18 +39,6 @@ public class NitroxBotService : IHostedService, IDisposable
         client.Ready += ClientOnReady;
         client.JoinedGuild += ClientOnJoinedGuild;
         client.MessageReceived += BotOnMessageReceived;
-        client.ButtonExecuted += ClientOnComponentInteraction;
-        client.SelectMenuExecuted += ClientOnComponentInteraction;
-        client.ModalSubmitted += modal =>
-        {
-            // TODO: Also handle cancel signal so modal tasks aren't waiting forever on a non-submitted modal.
-            ReadOnlySpan<char> handleId = modal.Data.GetCapturedHandleId();
-            if (!handleId.IsEmpty)
-            {
-                return InteractionHandle.Signal(handleId.ToString(), modal);
-            }
-            return modal.DeferAsync(true);
-        };
     }
 
     private async Task ClientOnJoinedGuild(SocketGuild guild)
@@ -83,18 +71,7 @@ public class NitroxBotService : IHostedService, IDisposable
         await client.StopAsync();
     }
 
-    public event EventHandler<SocketMessage> MessageReceived;
-
-    private Task ClientOnComponentInteraction(SocketMessageComponent component)
-    {
-        // See docs for interaction order: https://docs.discordnet.dev/faq/int_framework/respondings-schemes.html
-        ReadOnlySpan<char> handleId = component.Data.GetCapturedHandleId();
-        if (!handleId.IsEmpty)
-        {
-            return InteractionHandle.Signal(handleId.ToString(), component);
-        }
-        return component.DeferAsync(true);
-    }
+    public event EventHandler<SocketMessage>? MessageReceived;
 
     private async Task ClientOnReady()
     {
@@ -137,7 +114,7 @@ public class NitroxBotService : IHostedService, IDisposable
             return differenceFromNow >= ageThreshold && differenceFromNow.TotalDays <= 13;
         }
 
-        IMessageChannel channel = await GetChannelAsync<IMessageChannel>(channelId);
+        IMessageChannel? channel = await GetChannelAsync<IMessageChannel>(channelId);
         if (channel == null)
         {
             return;
@@ -213,7 +190,7 @@ public class NitroxBotService : IHostedService, IDisposable
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
-        IMessageChannel channel = await GetChannelAsync<IMessageChannel>(channelId);
+        IMessageChannel? channel = await GetChannelAsync<IMessageChannel>(channelId);
         if (channel == null)
         {
             return;
@@ -242,7 +219,7 @@ public class NitroxBotService : IHostedService, IDisposable
         });
     }
 
-    public IEnumerable<SocketRole> GetRolesByIds(SocketGuild guild, ArraySegment<ulong> roles)
+    public IEnumerable<SocketRole> GetRolesByIds(SocketGuild? guild, ArraySegment<ulong> roles)
     {
         if (guild == null)
         {
@@ -312,9 +289,9 @@ public class NitroxBotService : IHostedService, IDisposable
         return messages.ToArray();
     }
 
-    public async Task<T> GetChannelAsync<T>(ulong channelId) where T : class, IChannel
+    public async Task<T?> GetChannelAsync<T>(ulong channelId) where T : class, IChannel
     {
-        T channel = await client.GetChannelAsync(channelId) as T;
+        T? channel = await client.GetChannelAsync(channelId) as T;
         if (channel == null) log.ChannelNotFound(typeof(T), channelId);
         return channel;
     }

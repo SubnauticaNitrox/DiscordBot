@@ -29,13 +29,13 @@ public class AutoResponseExistingFiltersByIdAutoComplete : AutocompleteHandler
     {
         try
         {
-            AutocompleteOption autoResponseNameOption = interaction.GetOption(OptionKeys.AutoResponseName);
+            AutocompleteOption? autoResponseNameOption = interaction.GetOption(OptionKeys.AutoResponseName);
             if (autoResponseNameOption == null)
             {
                 log.AutoCompleteInvalidState(interaction.Data.CommandName);
                 return AutocompletionResult.FromSuccess(); // Internal error, not fault of user
             }
-            AutoResponse autoResponse = await db.AutoResponses
+            AutoResponse? autoResponse = await db.AutoResponses
                 .Include(ar => ar.Filters)
                 .FirstOrDefaultAsync(ar => ar.Name == autoResponseNameOption.Value.ToString());
             if (autoResponse == null)

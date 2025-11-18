@@ -4,19 +4,19 @@ namespace NitroxDiscordBot.Core.Extensions;
 
 public static class ChannelExtensions
 {
-    public static string GetMentionOrDefault(this IChannel channel, Func<IChannel, string> defaultValueFactory = null)
+    extension(IChannel? channel)
     {
-        if (channel == null)
+        public string GetMentionOrDefault(Func<IChannel?, string>? defaultValueFactory = null)
         {
-            return defaultValueFactory?.Invoke(null);
+            return channel switch
+            {
+                null => defaultValueFactory?.Invoke(null) ?? "Unknown",
+                IMentionable mentionable => mentionable.Mention,
+                _ => defaultValueFactory?.Invoke(channel) ?? "Unknown"
+            };
         }
-        if (channel is IMentionable mentionable)
-        {
-            return mentionable.Mention;
-        }
-        return defaultValueFactory?.Invoke(channel);
-    }
 
-    public static string GetMentionOrChannelName(this IChannel channel) =>
-        channel.GetMentionOrDefault(c => $"channel '{c?.Name ?? ""}'");
+        public string GetMentionOrChannelName() =>
+            channel.GetMentionOrDefault(c => $"channel '{c?.Name ?? ""}'");
+    }
 }

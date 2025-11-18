@@ -16,7 +16,7 @@ namespace NitroxDiscordBot.Services.SlashCommands;
 [RequireBotDeveloper(Group = "Permission")]
 [RequireUserPermission(GuildPermission.Administrator, Group = "Permission")]
 [Group("autoresponse", "Configures automatic responses to user messages")]
-public class AutoResponseSlashCommands : NitroxInteractionModule
+public class AutoResponseSlashCommands : InteractionModuleBase
 {
     private readonly NitroxBotService bot;
     private readonly BotContext db;
@@ -77,7 +77,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                         {
                             if (ulong.TryParse(channelIdString, out ulong channelId))
                             {
-                                ITextChannel channel = await bot.GetChannelAsync<ITextChannel>(channelId);
+                                ITextChannel? channel = await bot.GetChannelAsync<ITextChannel>(channelId);
                                 if (channel != null)
                                 {
                                     sb.Append(channel.GetMentionOrChannelName()).Append(' ');
@@ -150,7 +150,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         [Summary("name")] [Autocomplete<AutoResponseNameAutoComplete>]
         string autoResponseName)
     {
-        AutoResponse ar = await db.AutoResponses
+        AutoResponse? ar = await db.AutoResponses
             .AsTracking()
             .Include(a => a.Responses)
             .Where(ar => ar.Name == autoResponseName)
@@ -170,7 +170,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 allowedMentions: AllowedMentions.None);
             return;
         }
-        Response targetResponse = ar.Responses.FirstOrDefault(r => r.Type == Response.Types.MessageUsers);
+        Response? targetResponse = ar.Responses.FirstOrDefault(r => r.Type == Response.Types.MessageUsers);
         if (targetResponse == null)
         {
             targetResponse = new Response
@@ -204,7 +204,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
         [Summary("name")] [Autocomplete<AutoResponseNameAutoComplete>]
         string autoResponseName)
     {
-        AutoResponse ar = await db.AutoResponses
+        AutoResponse? ar = await db.AutoResponses
             .AsTracking()
             .Include(a => a.Responses)
             .Where(ar => ar.Name == autoResponseName)
@@ -224,7 +224,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 allowedMentions: AllowedMentions.None);
             return;
         }
-        Response targetResponse = ar.Responses.FirstOrDefault(r => r.Type == Response.Types.MessageUsers);
+        Response? targetResponse = ar.Responses.FirstOrDefault(r => r.Type == Response.Types.MessageUsers);
         if (targetResponse != null)
         {
             targetResponse.Value = targetResponse.Value.Except([Context.User.Id.ToString()]).ToArray();
@@ -251,7 +251,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
     }
 
     [Group("add", "Add filters or responses to an auto response")]
-    public class AutoResponseAdd : NitroxInteractionModule
+    public class AutoResponseAdd : InteractionModuleBase
     {
         private readonly NitroxBotService bot;
         private readonly BotContext db;
@@ -277,7 +277,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 await RespondAsync("Please enter a valid filter type", ephemeral: true);
                 return;
             }
-            AutoResponse ar =
+            AutoResponse? ar =
                 await db.AutoResponses.AsTracking().Where(ar => ar.Name == autoResponseName)
                     .FirstOrDefaultAsync();
             if (ar == null)
@@ -290,7 +290,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             {
                 Type = type,
             };
-            (string error, string[] values) = await filter.ValidateAsync(bot, value);
+            (string? error, string[] values) = await filter.ValidateAsync(bot, value);
             if (!string.IsNullOrWhiteSpace(error))
             {
                 await RespondAsync(error, ephemeral: true, allowedMentions: AllowedMentions.None);
@@ -319,7 +319,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 await RespondAsync("Please enter a valid response type", ephemeral: true);
                 return;
             }
-            AutoResponse ar =
+            AutoResponse? ar =
                 await db.AutoResponses
                     .AsTracking()
                     .Where(ar => ar.Name == autoResponseName)
@@ -334,7 +334,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             {
                 Type = type
             };
-            (string error, string[] values) = await response.ValidateAsync(bot, Context.Guild, value);
+            (string? error, string[] values) = await response.ValidateAsync(bot, Context.Guild, value);
             if (!string.IsNullOrEmpty(error))
             {
                 await RespondAsync(error, ephemeral: true, allowedMentions: AllowedMentions.None);
@@ -358,7 +358,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
     }
 
     [Group("remove", "Removes a filter or response from an auto response")]
-    public class AutoResponseRemove : NitroxInteractionModule
+    public class AutoResponseRemove : InteractionModuleBase
     {
         private readonly NitroxBotService bot;
         private readonly BotContext db;
@@ -382,7 +382,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                 return;
             }
 
-            AutoResponse arToDelete = await db.AutoResponses
+            AutoResponse? arToDelete = await db.AutoResponses
                 .Include(ar => ar.Responses)
                 .Include(ar => ar.Filters)
                 .FirstOrDefaultAsync(ar => ar.Name.ToLower() == autoResponseName.ToLower());
@@ -408,7 +408,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             [Summary(OptionKeys.FilterId)] [Autocomplete<AutoResponseExistingFiltersByIdAutoComplete>]
             int filterId)
         {
-            AutoResponse ar =
+            AutoResponse? ar =
                 await db.AutoResponses
                     .Include(ar => ar.Filters)
                     .AsTracking()
@@ -419,7 +419,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     ephemeral: true);
                 return;
             }
-            Filter filter = ar.Filters.FirstOrDefault(f => f.FilterId == filterId);
+            Filter? filter = ar.Filters.FirstOrDefault(f => f.FilterId == filterId);
             if (filter == null)
             {
                 await RespondAsync($"Requested filter was not found on auto response `{autoResponseName}`",
@@ -441,7 +441,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
     }
 
     [Group("update", "Updates existing auto responses")]
-    public class AutoResponseUpdate : NitroxInteractionModule
+    public class AutoResponseUpdate : InteractionModuleBase
     {
         private readonly NitroxBotService bot;
         private readonly BotContext db;
@@ -463,7 +463,7 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
             [Summary("value")] [Autocomplete<AutoResponseExistingFilterValueAutoComplete>]
             string value)
         {
-            AutoResponse ar =
+            AutoResponse? ar =
                 await db.AutoResponses
                     .Include(ar => ar.Filters)
                     .AsTracking()
@@ -474,14 +474,14 @@ public class AutoResponseSlashCommands : NitroxInteractionModule
                     ephemeral: true);
                 return;
             }
-            Filter filter = ar.Filters.FirstOrDefault(f => f.FilterId == filterId);
+            Filter? filter = ar.Filters.FirstOrDefault(f => f.FilterId == filterId);
             if (filter == null)
             {
                 await RespondAsync($"Requested filter was not found on auto response `{autoResponseName}`",
                     ephemeral: true);
                 return;
             }
-            (string error, string[] values) = await filter.ValidateAsync(bot, value);
+            (string? error, string[] values) = await filter.ValidateAsync(bot, value);
             if (!string.IsNullOrWhiteSpace(error))
             {
                 await RespondAsync(error, ephemeral: true, allowedMentions: AllowedMentions.None);

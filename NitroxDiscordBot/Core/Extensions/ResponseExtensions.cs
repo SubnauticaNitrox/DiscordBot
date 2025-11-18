@@ -8,7 +8,7 @@ namespace NitroxDiscordBot.Core.Extensions;
 
 public static class ResponseExtensions
 {
-    public static async Task<(string Error, string[] Values)> ValidateAsync(this Response response, NitroxBotService bot, IGuild guild, string value)
+    public static async Task<(string? Error, string[] Values)> ValidateAsync(this Response response, NitroxBotService bot, IGuild guild, string value)
     {
         char[] valueSplitChars = response.Type switch
         {

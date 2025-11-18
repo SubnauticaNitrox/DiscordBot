@@ -13,8 +13,8 @@ public partial class ContainsSentenceWithWordOrderOfAnyBenchmark
 
     private const string Text = "Can anyone help me? I would like to play the game subnautica, anyone with me?";
 
-    private static Regex interpretedRegex;
-    private static Regex compiledRegex;
+    private static Regex interpretedRegex = null!;
+    private static Regex compiledRegex = null!;
 
     [GeneratedRegex(RegexPattern, RegexDefaultOptions)]
     private static partial Regex Regex();

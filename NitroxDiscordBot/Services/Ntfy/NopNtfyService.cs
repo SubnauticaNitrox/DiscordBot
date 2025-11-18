@@ -5,7 +5,7 @@
 /// </summary>
 public sealed class NopNtfyService : INtfyService
 {
-    public Uri Url => null;
+    public Uri? Url => null;
 
     public Task SendMessageAsync(string topic, string message, string title, string urlLabel, string url)
     {

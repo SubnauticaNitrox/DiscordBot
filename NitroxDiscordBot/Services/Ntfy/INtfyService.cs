@@ -2,7 +2,7 @@
 
 public interface INtfyService
 {
-    public Uri Url { get; }
+    Uri? Url { get; }
     Task SendMessageAsync(string topic, string message, string title, string urlLabel, string url);
     Task<bool> IsAvailable();
 
@@ -10,7 +10,7 @@ public interface INtfyService
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return null;
+            return "";
         }
 
         return value.Replace(" ", "");

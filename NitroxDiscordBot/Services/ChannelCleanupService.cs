@@ -24,14 +24,14 @@ public class ChannelCleanupService : DiscordBotHostedService
     /// </summary>
     private readonly ConcurrentDictionary<Cleanup, DateTime> scheduledTasks = [];
 
-    private Task consumerTask;
-    private Task producerTask;
-    private CancellationTokenSource serviceCancellation;
+    private Task consumerTask = null!;
+    private Task producerTask = null!;
+    private CancellationTokenSource? serviceCancellation;
 
     /// <summary>
     ///     Cleanup tasks that are submitted to, based on the <see cref="scheduledTasks" />.
     /// </summary>
-    private Channel<Cleanup> workQueue;
+    private Channel<Cleanup>? workQueue;
 
     public ChannelCleanupService(NitroxBotService bot,
         BotContext db,
@@ -73,7 +73,7 @@ public class ChannelCleanupService : DiscordBotHostedService
 
     public override Task StopAsync(CancellationToken cancellationToken)
     {
-        serviceCancellation.Cancel();
+        serviceCancellation?.Cancel();
         return Task.WhenAll(producerTask, consumerTask);
     }
 
@@ -129,7 +129,7 @@ public class ChannelCleanupService : DiscordBotHostedService
                     // If scheduled time is in the past, queue for immediate run and calc the next occurence.
                     if ((scheduledTime - DateTime.UtcNow).Ticks < 0)
                     {
-                        await workQueue.Writer.WriteAsync(cleanupDefinition, cancellationToken);
+                        await workQueue!.Writer.WriteAsync(cleanupDefinition, cancellationToken);
                         AddOrUpdateScheduleForCleanupDefinition(scheduledTasks, cleanupDefinition);
                     }
                 }
@@ -150,7 +150,7 @@ public class ChannelCleanupService : DiscordBotHostedService
     {
         try
         {
-            await foreach (Cleanup cleanup in workQueue.Reader.ReadAllAsync(cancellationToken))
+            await foreach (Cleanup cleanup in workQueue!.Reader.ReadAllAsync(cancellationToken))
             {
                 await resilience.ExecuteAsync(async (context, ct) =>
                 {

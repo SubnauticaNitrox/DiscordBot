@@ -65,7 +65,7 @@ public class CleanupSlashCommands : InteractionModuleBase
         sb.AppendLine();
         await foreach (Cleanup definition in db.Cleanups.AsAsyncEnumerable())
         {
-            IChannel channel = await bot.GetChannelAsync<IChannel>(definition.ChannelId);
+            IChannel? channel = await bot.GetChannelAsync<IChannel>(definition.ChannelId);
             if (channel == null)
             {
                 continue;

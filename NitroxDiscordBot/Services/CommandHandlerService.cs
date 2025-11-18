@@ -30,7 +30,7 @@ public class CommandHandlerService : DiscordBotHostedService
         return Task.CompletedTask;
     }
 
-    private void BotOnMessageReceived(object sender, SocketMessage message)
+    private void BotOnMessageReceived(object? sender, SocketMessage message)
     {
         if (message is not { Author: SocketGuildUser { IsBot: false, GuildPermissions.ManageMessages: true } })
         {

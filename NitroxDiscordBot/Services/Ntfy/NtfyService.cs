@@ -24,7 +24,7 @@ public sealed class NtfyService : INtfyService
             typeof(NtfyService).Assembly.GetName().Version?.ToString() ?? "1.0.0.0"));
     }
 
-    public Uri Url => client.BaseAddress;
+    public Uri? Url => client.BaseAddress;
 
     public async Task SendMessageAsync(string topic, string message, string title, string urlLabel, string url)
     {

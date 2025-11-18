@@ -51,7 +51,7 @@ public class AutoResponseService : DiscordBotHostedService
         return Task.CompletedTask;
     }
 
-    private async void BotOnMessageReceived(object sender, SocketMessage message)
+    private async void BotOnMessageReceived(object? sender, SocketMessage message)
     {
         if (message is not { Author: SocketGuildUser { IsBot: false } author })
         {
@@ -91,7 +91,7 @@ public class AutoResponseService : DiscordBotHostedService
                 {
                     if (t.IsFaulted)
                     {
-                        Log.NtfyError(t.Exception, ntfy.Url.ToString());
+                        Log.NtfyError(t.Exception, ntfy.Url?.ToString() ?? "none");
                     }
                 }));
             }

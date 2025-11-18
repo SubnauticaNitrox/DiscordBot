@@ -7,54 +7,57 @@ namespace NitroxDiscordBot.Core.Extensions;
 
 public static class FilterExtensions
 {
-    public static async Task<(string Error, string[] ParsedValues)> ValidateAsync(this AutoResponse.Filter filter, NitroxBotService bot, string value)
+    extension(AutoResponse.Filter filter)
     {
-        static string[] ParseAsFilterValues(Types type, string newFilterValue)
+        public async Task<(string? Error, string[] ParsedValues)> ValidateAsync(NitroxBotService bot, string value)
         {
-            char[] valueSplitChars = type switch
+            static string[] ParseAsFilterValues(Types type, string newFilterValue)
             {
-                Types.AnyChannel => [',', ' '],
-                _ => [',']
-            };
-            string[] values = newFilterValue.Split(valueSplitChars,
-                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            return values is null or { Length: 0 } ? [] : values;
-        }
-
-        string[] values = ParseAsFilterValues(filter.Type, value);
-        if (values is [])
-        {
-            return ("Filter value must not be empty", []);
-        }
-
-        switch (filter.Type)
-        {
-            case Types.AnyChannel when values is [_, ..] &&
-                                                           values.OfParsable<ulong>() is
-                                                               [_, ..] channelIds:
-                foreach (ulong channelId in channelIds)
+                char[] valueSplitChars = type switch
                 {
-                    if (await bot.GetChannelAsync<ITextChannel>(channelId) == null)
+                    Types.AnyChannel => [',', ' '],
+                    _ => [',']
+                };
+                string[] values = newFilterValue.Split(valueSplitChars,
+                    StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                return values is null or { Length: 0 } ? [] : values;
+            }
+
+            string[] values = ParseAsFilterValues(filter.Type, value);
+            if (values is [])
+            {
+                return ("Filter value must not be empty", []);
+            }
+
+            switch (filter.Type)
+            {
+                case Types.AnyChannel when values is [_, ..] &&
+                                           values.OfParsable<ulong>() is
+                                               [_, ..] channelIds:
+                    foreach (ulong channelId in channelIds)
                     {
-                        return ($"No text channel was found that has id `{channelId}`", []);
+                        if (await bot.GetChannelAsync<ITextChannel>(channelId) == null)
+                        {
+                            return ($"No text channel was found that has id `{channelId}`", []);
+                        }
                     }
-                }
-                break;
-            case Types.UserJoinAge when values is [_] && TimeSpan.TryParse(values[0], out TimeSpan _):
-                break;
-            case Types.MessageWordOrder when values is [_, ..]:
-                try
-                {
-                    values.CreateRegexesForAnyWordGroupInOrderInSentence();
-                }
-                catch (Exception ex)
-                {
-                    return ($"Error occurred parsing filter value filter type `{Types.MessageWordOrder.ToString()}`: **{ex.Message}**", []);
-                }
-                break;
-            default:
-                return ($"Unsupported value `{value}` for filter type `{filter.Type}`", []);
+                    break;
+                case Types.UserJoinAge when values is [_] && TimeSpan.TryParse(values[0], out TimeSpan _):
+                    break;
+                case Types.MessageWordOrder when values is [_, ..]:
+                    try
+                    {
+                        values.CreateRegexesForAnyWordGroupInOrderInSentence();
+                    }
+                    catch (Exception ex)
+                    {
+                        return ($"Error occurred parsing filter value filter type `{Types.MessageWordOrder.ToString()}`: **{ex.Message}**", []);
+                    }
+                    break;
+                default:
+                    return ($"Unsupported value `{value}` for filter type `{filter.Type}`", []);
+            }
+            return (null, values);
         }
-        return (null, values);
     }
 }

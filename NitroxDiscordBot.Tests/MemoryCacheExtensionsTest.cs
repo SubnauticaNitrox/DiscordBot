@@ -6,7 +6,7 @@ namespace NitroxDiscordBot.Tests;
 [TestClass]
 public class MemoryCacheExtensionsTest
 {
-    private IMemoryCache cache;
+    private IMemoryCache cache = null!;
 
     [TestInitialize]
     public void Initialize()
