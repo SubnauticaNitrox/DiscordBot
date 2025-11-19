@@ -11,16 +11,10 @@ namespace NitroxDiscordBot.Services.SlashCommands;
 [RequireBotDeveloper(Group = "Permission")]
 [RequireUserPermission(GuildPermission.Administrator, Group = "Permission")]
 [Group("cleanup", "Configures periodic cleanup schedules on channels")]
-public class CleanupSlashCommands : InteractionModuleBase
+internal class CleanupSlashCommands(NitroxBotService bot, BotContext db) : InteractionModuleBase
 {
-    private readonly NitroxBotService bot;
-    private readonly BotContext db;
-
-    public CleanupSlashCommands(NitroxBotService bot, BotContext db)
-    {
-        this.bot = bot;
-        this.db = db;
-    }
+    private readonly NitroxBotService bot = bot;
+    private readonly BotContext db = db;
 
     [SlashCommand("create", "Creates a cleanup schedule to periodically remove old messages")]
     public async Task CreateCleanupAsync([ChannelTypes(ChannelType.Text)]IChannel channel)

@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using Discord;
 using Discord.WebSocket;
+using JetBrains.Annotations;
 using NitroxDiscordBot.Core;
 
 namespace NitroxDiscordBot.Services;
@@ -8,15 +9,14 @@ namespace NitroxDiscordBot.Services;
 /// <summary>
 ///     Legacy command handler service just for the ?ping command.
 /// </summary>
-public class CommandHandlerService : DiscordBotHostedService
+[UsedImplicitly]
+internal sealed class CommandHandlerService(
+    NitroxBotService bot,
+    ILogger<CommandHandlerService> log)
+    : DiscordBotHostedService(bot, log)
 {
     private const char CommandPrefix = '?';
     private const string PingCommandName = "ping";
-
-    public CommandHandlerService(NitroxBotService bot,
-        ILogger<CommandHandlerService> log) : base(bot, log)
-    {
-    }
 
     public override Task StartAsync(CancellationToken cancellationToken)
     {

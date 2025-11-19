@@ -2,7 +2,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace NitroxDiscordBot.Services.Health;
 
-public class ConnectedToDiscordHealthCheck(NitroxBotService botService) : IHealthCheck
+internal sealed class ConnectedToDiscordHealthCheck(NitroxBotService botService) : IHealthCheck
 {
     private readonly NitroxBotService botService = botService;
 

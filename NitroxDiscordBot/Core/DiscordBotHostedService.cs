@@ -6,7 +6,7 @@ namespace NitroxDiscordBot.Core;
 /// <summary>
 ///     Default service implementation for Discord Bot services that waits for the bot to get ready when starting.
 /// </summary>
-public abstract class DiscordBotHostedService : IHostedService, IDisposable
+internal abstract class DiscordBotHostedService : IHostedService, IDisposable
 {
     private readonly Lazy<ConcurrentBag<IDisposable>> disposablesOnStop = new(LazyThreadSafetyMode.PublicationOnly);
     private readonly Lazy<ConcurrentBag<IDisposable>> disposablesOnDispose = new(LazyThreadSafetyMode.PublicationOnly);

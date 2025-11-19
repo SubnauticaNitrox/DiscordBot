@@ -13,8 +13,8 @@ public sealed class NtfyService : INtfyService
 
     public NtfyService(HttpClient client, IOptions<NtfyConfig> config)
     {
-        ArgumentNullException.ThrowIfNull(client, nameof(client));
-        ArgumentNullException.ThrowIfNull(config, nameof(config));
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(config);
         NtfyConfig configValue = config.Value;
         ArgumentException.ThrowIfNullOrWhiteSpace(configValue.Url, nameof(configValue.Url));
 
@@ -33,6 +33,7 @@ public sealed class NtfyService : INtfyService
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
         ArgumentException.ThrowIfNullOrWhiteSpace(urlLabel);
         ArgumentException.ThrowIfNullOrWhiteSpace(url);
+
         StringContent content = new(message);
         content.Headers.Add("Title", title);
         content.Headers.Add("Actions", $"view, {urlLabel}, {url}");

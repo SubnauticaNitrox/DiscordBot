@@ -1,7 +1,5 @@
-using Microsoft.EntityFrameworkCore;
 using NitroxDiscordBot.Configuration;
 using NitroxDiscordBot.Core;
-using NitroxDiscordBot.Db;
 
 EnvironmentManager.SetAndGetDotnetEnvironmentByBuildConfiguration();
 WebApplicationBuilder builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions
@@ -15,7 +13,7 @@ builder.WebHost.UseKestrelCore();
 IServiceCollection services = builder.Services;
 ConfigurationManager config = builder.Configuration;
 
-// Configuration
+// Configure options
 config
     .AddJsonFile("appsettings.json", true, true)
     .AddConditionalJsonFile(builder.Environment.IsProduction(), "appsettings.Production.json", true, true)
@@ -28,7 +26,7 @@ services.Configure<HostOptions>(options =>
     options.ServicesStopConcurrently = true;
 });
 
-// Services
+// Configure services
 services
     .AddRoutingCore()
     .AddMemoryCache()
@@ -38,14 +36,9 @@ services
     .AddAppHealthChecks()
     .AddAppDomainServices();
 
+// Initialize and run
 WebApplication host = builder.Build();
-// Ensure database is up-to-date
-using (IServiceScope scope = host.Services.CreateScope())
-{
-    BotContext db = scope.ServiceProvider.GetRequiredService<BotContext>();
-    db.Database.Migrate();
-}
-
+host.Services.UpgradeAppDatabase();
 host.MapHealthChecks("/health");
 host.UseRouting();
 host.Run();

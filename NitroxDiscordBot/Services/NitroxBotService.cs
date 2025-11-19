@@ -11,7 +11,7 @@ namespace NitroxDiscordBot.Services;
 /// <summary>
 ///     Connects to the Discord API as a bot and provides an abstraction over the Discord API for other services.
 /// </summary>
-public class NitroxBotService : IHostedService, IDisposable
+internal sealed class NitroxBotService : IHostedService, IDisposable
 {
     private readonly DiscordSocketClient client;
     private readonly IOptionsMonitor<NitroxBotConfig> config;
@@ -41,16 +41,6 @@ public class NitroxBotService : IHostedService, IDisposable
         client.MessageReceived += BotOnMessageReceived;
     }
 
-    private async Task ClientOnJoinedGuild(SocketGuild guild)
-    {
-        if (guild.Id != config.CurrentValue.GuildId)
-        {
-            log.UnexpectedBotJoinGuildAttempt(guild.Name, guild.Id, config.CurrentValue.GuildId);
-            return;
-        }
-        await interactionService.RegisterCommandsToGuildAsync(guild.Id);
-    }
-
     public bool IsConnected => client.ConnectionState == ConnectionState.Connected;
 
     public void Dispose()
@@ -69,6 +59,16 @@ public class NitroxBotService : IHostedService, IDisposable
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         await client.StopAsync();
+    }
+
+    private async Task ClientOnJoinedGuild(SocketGuild guild)
+    {
+        if (guild.Id != config.CurrentValue.GuildId)
+        {
+            log.UnexpectedBotJoinGuildAttempt(guild.Name, guild.Id, config.CurrentValue.GuildId);
+            return;
+        }
+        await interactionService.RegisterCommandsToGuildAsync(guild.Id);
     }
 
     public event EventHandler<SocketMessage>? MessageReceived;
@@ -109,18 +109,18 @@ public class NitroxBotService : IHostedService, IDisposable
     {
         static bool IsSuitableForBulkDelete(DateTimeOffset timestamp, TimeSpan ageThreshold)
         {
-            TimeSpan differenceFromNow = DateTimeOffset.UtcNow - timestamp;
+            var differenceFromNow = DateTimeOffset.UtcNow - timestamp;
             // Note: messages older than 2 weeks can't be bulk-deleted.
             return differenceFromNow >= ageThreshold && differenceFromNow.TotalDays <= 13;
         }
 
-        IMessageChannel? channel = await GetChannelAsync<IMessageChannel>(channelId);
+        var channel = await GetChannelAsync<IMessageChannel>(channelId);
         if (channel == null)
         {
             return;
         }
 
-        int count = 0;
+        var count = 0;
         log.StartingChannelCleanup(channelId, channel.Name);
         await foreach (IReadOnlyCollection<IMessage> buffer in channel
                            .GetMessagesAsync(DiscordConstants.EarliestSnowflakeId, Direction.After)
@@ -131,16 +131,16 @@ public class NitroxBotService : IHostedService, IDisposable
                 continue;
             }
             // Messages from API seem to be in reverse chronological order. But in case the API changes, let's order it ourselves again.
-            IMessage[] chronologicalMessages = buffer.Reverse().OrderBy(m => m.Timestamp).ToArray();
+            var chronologicalMessages = buffer.Reverse().OrderBy(m => m.Timestamp).ToArray();
 
             // 1. If channel supports bulk delete, do this first.
             if (channel is ITextChannel textChannel)
             {
-                IMessage[] messagesToBulkDelete = chronologicalMessages
+                var messagesToBulkDelete = chronologicalMessages
                     .TakeWhile(m => IsSuitableForBulkDelete(m.Timestamp, ageThreshold)).ToArray();
                 if (messagesToBulkDelete.Length > 0)
                 {
-                    string messagesSummary = string.Join(Environment.NewLine,
+                    var messagesSummary = string.Join(Environment.NewLine,
                         messagesToBulkDelete.Select(m =>
                             $@"{m.Timestamp}:{Environment.NewLine}{m.Content.Replace("\n", "\t" + Environment.NewLine)}"));
                     log.BulkDeletingMessages(messagesSummary);
@@ -152,7 +152,7 @@ public class NitroxBotService : IHostedService, IDisposable
                 }
             }
             // 2. Remove remaining messages one-by-one (e.g. when channel does not support it or message(s) are older than 2 weeks).
-            foreach (IMessage message in chronologicalMessages)
+            foreach (var message in chronologicalMessages)
             {
                 if (message.Timestamp + ageThreshold < DateTimeOffset.UtcNow)
                 {
@@ -190,14 +190,14 @@ public class NitroxBotService : IHostedService, IDisposable
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
-        IMessageChannel? channel = await GetChannelAsync<IMessageChannel>(channelId);
+        var channel = await GetChannelAsync<IMessageChannel>(channelId);
         if (channel == null)
         {
             return;
         }
 
         // Send message if index is outside total messages.
-        IMessage[] messages = await GetMessagesAsync(channel, index + 2);
+        var messages = await GetMessagesAsync(channel, index + 2);
         if (index >= messages.Length)
         {
             await channel.SendMessageAsync(null, false, embed);
@@ -225,38 +225,27 @@ public class NitroxBotService : IHostedService, IDisposable
         {
             yield break;
         }
-        foreach (SocketRole role in guild.Roles)
-        {
-            foreach (ulong roleId in roles)
+        foreach (var role in guild.Roles)
+        foreach (var roleId in roles)
+            if (role.Id == roleId)
             {
-                if (role.Id == roleId)
-                {
-                    yield return role;
-                }
+                yield return role;
             }
-        }
     }
 
     public IEnumerable<SocketGuildUser> GetUsersWithAnyRoles(SocketGuild guild, ArraySegment<ulong> roles)
     {
         Dictionary<ulong, SocketGuildUser> result = [];
-        foreach (SocketRole role in guild.Roles)
-        {
-            foreach (ulong roleId in roles)
+        foreach (var role in guild.Roles)
+        foreach (var roleId in roles)
+            if (role.Id == roleId)
             {
-                if (role.Id == roleId)
-                {
-                    foreach (SocketGuildUser member in role.Members)
-                    {
-                        result[member.Id] = member;
-                    }
-                }
+                foreach (var member in role.Members) result[member.Id] = member;
             }
-        }
         return result.Values;
     }
 
-    public async Task<List<IGuildUser>> GetUsersByIdsAsync(IGuild guild, ArraySegment<ulong> userIds)
+    public async Task<List<IGuildUser>> GetUsersByIdsAsync(IGuild? guild, ArraySegment<ulong> userIds)
     {
         if (guild == null)
         {
@@ -267,9 +256,9 @@ public class NitroxBotService : IHostedService, IDisposable
             return [];
         }
         List<IGuildUser> users = [];
-        foreach (ulong userId in userIds)
+        foreach (var userId in userIds)
         {
-            IGuildUser user = await guild.GetUserAsync(userId);
+            var user = await guild.GetUserAsync(userId);
             if (user != null)
             {
                 users.Add(user);
@@ -291,14 +280,17 @@ public class NitroxBotService : IHostedService, IDisposable
 
     public async Task<T?> GetChannelAsync<T>(ulong channelId) where T : class, IChannel
     {
-        T? channel = await client.GetChannelAsync(channelId) as T;
-        if (channel == null) log.ChannelNotFound(typeof(T), channelId);
+        var channel = await client.GetChannelAsync(channelId) as T;
+        if (channel == null)
+        {
+            log.ChannelNotFound(typeof(T), channelId);
+        }
         return channel;
     }
 
     public async Task WaitForReadyAsync(CancellationToken cancellationToken)
     {
-        bool enteredLoop = false;
+        var enteredLoop = false;
         while (!cancellationToken.IsCancellationRequested && !IsConnected)
         {
             enteredLoop = true;
@@ -330,7 +322,7 @@ public class NitroxBotService : IHostedService, IDisposable
         return Task.CompletedTask;
     }
 
-    protected virtual void OnMessageReceived(SocketMessage e)
+    private void OnMessageReceived(SocketMessage e)
     {
         MessageReceived?.Invoke(this, e);
     }

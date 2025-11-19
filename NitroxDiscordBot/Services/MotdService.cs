@@ -11,7 +11,7 @@ namespace NitroxDiscordBot.Services;
 ///     Adds and maintains message-of-the-day channels based on the <see cref="MotdConfig" />.
 /// </summary>
 [Obsolete("Use database entities here")]
-public class MotdService : DiscordBotHostedService
+internal sealed class MotdService : DiscordBotHostedService
 {
     private readonly Channel<MotdConfig.ChannelMotd> channelOfMotds = Channel.CreateUnbounded<MotdConfig.ChannelMotd>();
 

@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using Discord;
 using Discord.WebSocket;
+using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NitroxDiscordBot.Core;
@@ -11,29 +12,24 @@ using static NitroxDiscordBot.Db.Models.AutoResponse;
 
 namespace NitroxDiscordBot.Services;
 
-public class AutoResponseService : DiscordBotHostedService
+[UsedImplicitly]
+internal sealed class AutoResponseService(
+    NitroxBotService bot,
+    BotContext db,
+    ILogger<AutoResponseService> log,
+    TaskQueueService taskQueue,
+    INtfyService ntfy,
+    IMemoryCache cache)
+    : DiscordBotHostedService(bot, log)
 {
-    private readonly IMemoryCache cache;
-    private readonly BotContext db;
-    private readonly INtfyService ntfy;
-    private readonly TaskQueueService taskQueue;
-
-    public AutoResponseService(NitroxBotService bot,
-        BotContext db,
-        ILogger<AutoResponseService> log,
-        TaskQueueService taskQueue,
-        INtfyService ntfy,
-        IMemoryCache cache) : base(bot, log)
-    {
-        ArgumentNullException.ThrowIfNull(db);
-        this.db = db;
-        this.taskQueue = taskQueue;
-        this.cache = cache;
-        this.ntfy = ntfy;
-    }
+    private readonly IMemoryCache cache = cache;
+    private readonly BotContext db = db;
+    private readonly INtfyService ntfy = ntfy;
+    private readonly TaskQueueService taskQueue = taskQueue;
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(db);
         Bot.MessageReceived += BotOnMessageReceived;
         if (await ntfy.IsAvailable())
         {

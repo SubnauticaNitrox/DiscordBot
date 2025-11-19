@@ -13,7 +13,7 @@ namespace NitroxDiscordBot.Services;
 /// <summary>
 ///     Cleans up "old" messages from Discord channels.
 /// </summary>
-public class ChannelCleanupService : DiscordBotHostedService
+internal sealed class ChannelCleanupService : DiscordBotHostedService
 {
     private readonly BotContext db;
     private readonly ResiliencePipeline resilience;

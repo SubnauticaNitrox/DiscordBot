@@ -6,7 +6,7 @@ using static NitroxDiscordBot.Db.Models.AutoResponse.Response;
 
 namespace NitroxDiscordBot.Core.Extensions;
 
-public static class ResponseExtensions
+internal static class ResponseExtensions
 {
     public static async Task<(string? Error, string[] Values)> ValidateAsync(this Response response, NitroxBotService bot, IGuild guild, string value)
     {

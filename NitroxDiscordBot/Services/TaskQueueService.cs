@@ -6,16 +6,11 @@ namespace NitroxDiscordBot.Services;
 ///     Service which tracks tasks that were fired but should not be forgotten. This means that remaining tasks will be
 ///     awaited when the service stops.
 /// </summary>
-public sealed class TaskQueueService : IHostedService
+internal sealed class TaskQueueService(ILogger<TaskQueueService> log) : IHostedService
 {
     private readonly CancellationTokenSource cts = new();
-    private readonly ILogger<TaskQueueService> log;
+    private readonly ILogger<TaskQueueService> log = log;
     private readonly Channel<Task> tasks = Channel.CreateUnbounded<Task>();
-
-    public TaskQueueService(ILogger<TaskQueueService> log)
-    {
-        this.log = log;
-    }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {

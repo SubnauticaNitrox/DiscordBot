@@ -5,25 +5,13 @@ using static NitroxDiscordBot.Db.Models.AutoResponse.Filter;
 
 namespace NitroxDiscordBot.Core.Extensions;
 
-public static class FilterExtensions
+internal static class FilterExtensions
 {
     extension(AutoResponse.Filter filter)
     {
         public async Task<(string? Error, string[] ParsedValues)> ValidateAsync(NitroxBotService bot, string value)
         {
-            static string[] ParseAsFilterValues(Types type, string newFilterValue)
-            {
-                char[] valueSplitChars = type switch
-                {
-                    Types.AnyChannel => [',', ' '],
-                    _ => [',']
-                };
-                string[] values = newFilterValue.Split(valueSplitChars,
-                    StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-                return values is null or { Length: 0 } ? [] : values;
-            }
-
-            string[] values = ParseAsFilterValues(filter.Type, value);
+            var values = ParseAsFilterValues(filter.Type, value);
             if (values is [])
             {
                 return ("Filter value must not be empty", []);
@@ -34,15 +22,13 @@ public static class FilterExtensions
                 case Types.AnyChannel when values is [_, ..] &&
                                            values.OfParsable<ulong>() is
                                                [_, ..] channelIds:
-                    foreach (ulong channelId in channelIds)
-                    {
+                    foreach (var channelId in channelIds)
                         if (await bot.GetChannelAsync<ITextChannel>(channelId) == null)
                         {
                             return ($"No text channel was found that has id `{channelId}`", []);
                         }
-                    }
                     break;
-                case Types.UserJoinAge when values is [_] && TimeSpan.TryParse(values[0], out TimeSpan _):
+                case Types.UserJoinAge when values is [_] && TimeSpan.TryParse(values[0], out var _):
                     break;
                 case Types.MessageWordOrder when values is [_, ..]:
                     try
@@ -51,13 +37,27 @@ public static class FilterExtensions
                     }
                     catch (Exception ex)
                     {
-                        return ($"Error occurred parsing filter value filter type `{Types.MessageWordOrder.ToString()}`: **{ex.Message}**", []);
+                        return (
+                            $"Error occurred parsing filter value filter type `{Types.MessageWordOrder.ToString()}`: **{ex.Message}**",
+                            []);
                     }
                     break;
                 default:
                     return ($"Unsupported value `{value}` for filter type `{filter.Type}`", []);
             }
             return (null, values);
+
+            static string[] ParseAsFilterValues(Types type, string newFilterValue)
+            {
+                char[] valueSplitChars = type switch
+                {
+                    Types.AnyChannel => [',', ' '],
+                    _ => [',']
+                };
+                var values = newFilterValue.Split(valueSplitChars,
+                    StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                return values is null or { Length: 0 } ? [] : values;
+            }
         }
     }
 }
