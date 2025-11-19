@@ -1,24 +1,14 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using NitroxDiscordBot.Configuration;
+using NitroxDiscordBot.Core;
 using NitroxDiscordBot.Db;
-using NitroxDiscordBot.Services;
-using NitroxDiscordBot.Services.Ntfy;
 
-if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") is null)
-{
-#if DEBUG
-    Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
-#else
-    Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Production");
-#endif
-}
-
+EnvironmentManager.SetAndGetDotnetEnvironmentByBuildConfiguration();
 WebApplicationBuilder builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions
 {
     Args = args,
     ApplicationName = "Nitrox Discord Bot",
-    EnvironmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+    EnvironmentName = EnvironmentManager.DotnetEnvironment
 });
 builder.WebHost.UseKestrelCore();
 
@@ -26,15 +16,10 @@ IServiceCollection services = builder.Services;
 ConfigurationManager config = builder.Configuration;
 
 // Configuration
-config.AddJsonFile("appsettings.json", true, true);
-if (builder.Environment.IsProduction())
-{
-    config.AddJsonFile("appsettings.Production.json", true, true);
-}
-if (builder.Environment.IsDevelopment())
-{
-    config.AddJsonFile("appsettings.Development.json", true, true);
-}
+config
+    .AddJsonFile("appsettings.json", true, true)
+    .AddConditionalJsonFile(builder.Environment.IsProduction(), "appsettings.Production.json", true, true)
+    .AddConditionalJsonFile(builder.Environment.IsDevelopment(), "appsettings.Development.json", true, true);
 services.AddOptions<NitroxBotConfig>().Bind(config).ValidateDataAnnotations().ValidateOnStart();
 services.AddOptions<NtfyConfig>().Bind(config.GetSection("Ntfy")).ValidateDataAnnotations().ValidateOnStart();
 services.Configure<HostOptions>(options =>

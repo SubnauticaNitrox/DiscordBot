@@ -10,65 +10,68 @@ namespace NitroxDiscordBot.Core.Extensions;
 
 internal static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddHostedSingleton<TService>(this IServiceCollection services)
-        where TService : class, IHostedService
+    extension(IServiceCollection services)
     {
-        return services.AddSingleton<TService>().AddHostedService(provider => provider.GetRequiredService<TService>());
-    }
-
-    public static IServiceCollection AddAppLogging(this IServiceCollection services)
-    {
-        services.AddLogging(opt =>
+        public IServiceCollection AddHostedSingleton<TService>()
+            where TService : class, IHostedService
         {
-            opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff ");
-            opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", LogLevel.Warning);
-        });
-        return services;
-    }
+            return services.AddSingleton<TService>().AddHostedService(provider => provider.GetRequiredService<TService>());
+        }
 
-    public static IServiceCollection AddAppDatabase(this IServiceCollection services, bool isDevelopment)
-    {
-        // Don't use Scoped lifetime for DbContext as the services are singleton, not Scoped/Transient.
-        services.AddDbContext<BotContext>(options =>
+        public IServiceCollection AddAppLogging()
         {
-            options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-            if (isDevelopment)
+            services.AddLogging(opt =>
             {
-                options.EnableSensitiveDataLogging();
-            }
-        }, ServiceLifetime.Transient, ServiceLifetime.Transient);
-        return services;
-    }
+                opt.AddSimpleConsole(c => c.TimestampFormat = "HH:mm:ss.fff ");
+                opt.AddFilter($"{nameof(Microsoft)}.{nameof(Microsoft.EntityFrameworkCore)}", LogLevel.Warning);
+            });
+            return services;
+        }
 
-    public static IServiceCollection AddAppHttp(this IServiceCollection services)
-    {
-        return services.AddHealthChecks().Services
-            .AddHttpClient<INtfyService, INtfyService>((client, provider) =>
+        public IServiceCollection AddAppDatabase(bool isDevelopment)
+        {
+            // Don't use Scoped lifetime for DbContext as the services are singleton, not Scoped/Transient.
+            services.AddDbContext<BotContext>(options =>
             {
-                try
+                options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+                if (isDevelopment)
                 {
-                    return new NtfyService(client, provider.GetRequiredService<IOptions<NtfyConfig>>());
+                    options.EnableSensitiveDataLogging();
                 }
-                catch
+            }, ServiceLifetime.Transient, ServiceLifetime.Transient);
+            return services;
+        }
+
+        public IServiceCollection AddAppHttp()
+        {
+            return services.AddHealthChecks().Services
+                .AddHttpClient<INtfyService, INtfyService>((client, provider) =>
                 {
-                    return new NopNtfyService();
-                }
-            }).SetHandlerLifetime(TimeSpan.FromMinutes(5)).Services;
-    }
+                    try
+                    {
+                        return new NtfyService(client, provider.GetRequiredService<IOptions<NtfyConfig>>());
+                    }
+                    catch
+                    {
+                        return new NopNtfyService();
+                    }
+                }).SetHandlerLifetime(TimeSpan.FromMinutes(5)).Services;
+        }
 
-    public static IServiceCollection AddAppHealthChecks(this IServiceCollection services)
-    {
-        services.AddHealthChecks().AddCheck<ConnectedToDiscordHealthCheck>("Connected");
-        return services;
-    }
+        public IServiceCollection AddAppHealthChecks()
+        {
+            services.AddHealthChecks().AddCheck<ConnectedToDiscordHealthCheck>("Connected");
+            return services;
+        }
 
-    public static IServiceCollection AddAppDomainServices(this IServiceCollection services)
-    {
-        services.AddHostedSingleton<NitroxBotService>()
-            .AddHostedSingleton<TaskQueueService>()
-            .AddHostedSingleton<CommandHandlerService>()
-            .AddHostedSingleton<AutoResponseService>()
-            .AddHostedSingleton<ChannelCleanupService>();
-        return services;
+        public IServiceCollection AddAppDomainServices()
+        {
+            services.AddHostedSingleton<NitroxBotService>()
+                .AddHostedSingleton<TaskQueueService>()
+                .AddHostedSingleton<CommandHandlerService>()
+                .AddHostedSingleton<AutoResponseService>()
+                .AddHostedSingleton<ChannelCleanupService>();
+            return services;
+        }
     }
 }
