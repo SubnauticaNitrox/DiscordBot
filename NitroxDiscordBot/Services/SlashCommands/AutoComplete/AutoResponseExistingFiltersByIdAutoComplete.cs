@@ -10,17 +10,14 @@ namespace NitroxDiscordBot.Services.SlashCommands.AutoComplete;
 /// <summary>
 ///     Returns auto complete options with the names of all the filters on an existing <see cref="AutoResponse" />, which is in the database.
 /// </summary>
-internal abstract class AutoResponseExistingFiltersByIdAutoComplete : AutocompleteHandler
+internal class AutoResponseExistingFiltersByIdAutoComplete(
+    BotContext db,
+    ILogger<AutoResponseExistingFiltersByIdAutoComplete> log)
+    : AutocompleteHandler
 {
 
-    private readonly BotContext db;
-    private readonly ILogger<AutoResponseExistingFiltersByIdAutoComplete> log;
-
-    public AutoResponseExistingFiltersByIdAutoComplete(BotContext db, ILogger<AutoResponseExistingFiltersByIdAutoComplete> log)
-    {
-        this.db = db;
-        this.log = log;
-    }
+    private readonly BotContext db = db;
+    private readonly ILogger<AutoResponseExistingFiltersByIdAutoComplete> log = log;
 
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context,
         IAutocompleteInteraction interaction,

@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Globalization;
+using System.Reflection;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -11,7 +12,7 @@ namespace NitroxDiscordBot.Services;
 /// <summary>
 ///     Connects to the Discord API as a bot and provides an abstraction over the Discord API for other services.
 /// </summary>
-internal sealed class NitroxBotService : IHostedService, IDisposable
+public sealed class NitroxBotService : IHostedService, IDisposable
 {
     private readonly DiscordSocketClient client;
     private readonly IOptionsMonitor<NitroxBotConfig> config;
@@ -320,6 +321,49 @@ internal sealed class NitroxBotService : IHostedService, IDisposable
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    ///     Pings the channel of the command that requested the ping.
+    /// </summary>
+    internal async Task PingAsync(IMessage message, IUser? author = null, Func<Action<MessageProperties>, RequestOptions?, Task>? messageModifier = null, DateTimeOffset? interactionStart = null)
+    {
+        author ??= message.Author;
+        try
+        {
+            IUserMessage? pongMessage;
+            if (message is IUserMessage userMessage && userMessage.Author.Id == client.CurrentUser.Id)
+            {
+                pongMessage = userMessage;
+            }
+            else
+            {
+                pongMessage = await message.Channel.SendMessageAsync("Pong!", allowedMentions: AllowedMentions.None);
+            }
+            var timeDiff = pongMessage.Timestamp - (interactionStart ?? message.Timestamp);
+            messageModifier ??= pongMessage.ModifyAsync;
+            await messageModifier(m =>
+            {
+                var diffMs = timeDiff.TotalMilliseconds.ToString(CultureInfo.InvariantCulture);
+                m.Content = string.Create(10 + diffMs.Length,
+                    diffMs,
+                    (span, diff) =>
+                    {
+                        "Pong! `".AsSpan().CopyTo(span);
+                        span = span.Slice(7);
+
+                        diff.AsSpan().CopyTo(span);
+                        span = span.Slice(diff.Length);
+
+                        "ms`".AsSpan().CopyTo(span);
+                    }
+                );
+            }, null);
+        }
+        catch (Exception ex)
+        {
+            log.CommandError(ex, "ping", author.Id, author.Username);
+        }
     }
 
     private void OnMessageReceived(SocketMessage e)

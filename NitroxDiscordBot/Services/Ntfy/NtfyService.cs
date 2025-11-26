@@ -16,7 +16,7 @@ public sealed class NtfyService : INtfyService
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(config);
         NtfyConfig configValue = config.Value;
-        ArgumentException.ThrowIfNullOrWhiteSpace(configValue.Url, nameof(configValue.Url));
+        ArgumentException.ThrowIfNullOrWhiteSpace(configValue.Url);
 
         this.client = client;
         client.BaseAddress = new Uri(configValue.Url);

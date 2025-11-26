@@ -11,7 +11,7 @@ namespace NitroxDiscordBot.Services.SlashCommands;
 [RequireBotDeveloper(Group = "Permission")]
 [RequireUserPermission(GuildPermission.Administrator, Group = "Permission")]
 [Group("cleanup", "Configures periodic cleanup schedules on channels")]
-internal class CleanupSlashCommands(NitroxBotService bot, BotContext db) : InteractionModuleBase
+public sealed class CleanupSlashCommands(NitroxBotService bot, BotContext db) : InteractionModuleBase
 {
     private readonly NitroxBotService bot = bot;
     private readonly BotContext db = db;

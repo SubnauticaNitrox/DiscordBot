@@ -45,8 +45,8 @@ internal sealed class CommandHandlerService(
         // Lookup command action for the command name.
         switch (commandName)
         {
-            case PingCommandName:
-                _ = PingAsync(message).ContinueWith(t =>
+            case PingCommandName when message.Channel is ITextChannel:
+                _ = Bot.PingAsync(message).ContinueWith(t =>
                 {
                     if (t is { IsFaulted: true, Exception: Exception ex })
                     {
@@ -54,36 +54,6 @@ internal sealed class CommandHandlerService(
                     }
                 });
                 break;
-        }
-    }
-
-    private async Task PingAsync(IMessage command)
-    {
-        try
-        {
-            IUserMessage pongMessage = await command.Channel.SendMessageAsync("Pong!", allowedMentions: AllowedMentions.None);
-            TimeSpan timeDiff = pongMessage.Timestamp - command.Timestamp;
-            await pongMessage.ModifyAsync(m =>
-            {
-                string diffMs = timeDiff.TotalMilliseconds.ToString(CultureInfo.InvariantCulture);
-                m.Content = string.Create(10 + diffMs.Length,
-                    diffMs,
-                    (span, diff) =>
-                    {
-                        "Pong! `".AsSpan().CopyTo(span);
-                        span = span.Slice(7);
-
-                        diff.AsSpan().CopyTo(span);
-                        span = span.Slice(diff.Length);
-
-                        "ms`".AsSpan().CopyTo(span);
-                    }
-                );
-            });
-        }
-        catch (Exception ex)
-        {
-            Log.CommandError(ex, command.CleanContent, command.Author.Id, command.Author.Username);
         }
     }
 

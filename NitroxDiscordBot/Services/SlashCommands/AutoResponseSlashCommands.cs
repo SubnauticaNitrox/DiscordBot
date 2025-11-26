@@ -16,7 +16,7 @@ namespace NitroxDiscordBot.Services.SlashCommands;
 [RequireBotDeveloper(Group = "Permission")]
 [RequireUserPermission(GuildPermission.Administrator, Group = "Permission")]
 [Group("autoresponse", "Configures automatic responses to user messages")]
-internal sealed class AutoResponseSlashCommands : InteractionModuleBase
+public sealed class AutoResponseSlashCommands : InteractionModuleBase
 {
     private readonly NitroxBotService bot;
     private readonly BotContext db;
