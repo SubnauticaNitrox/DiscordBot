@@ -6,19 +6,20 @@ internal static class EnvironmentManager
 
     public static string SetAndGetDotnetEnvironmentByBuildConfiguration()
     {
-        if (Environment.GetEnvironmentVariable(DotnetEnvironmentVarName) is null)
+        if (Environment.GetEnvironmentVariable(DotnetEnvironmentVarName) is { } env && !string.IsNullOrWhiteSpace(env))
         {
-            string value =
+            return env;
+        }
+
+        string value =
 #if DEBUG
             "Development"
 #else
             "Production"
 #endif
-                ;
-            Environment.SetEnvironmentVariable(DotnetEnvironmentVarName, value);
-            return value;
-        }
-        return "Development";
+            ;
+        Environment.SetEnvironmentVariable(DotnetEnvironmentVarName, value);
+        return value;
     }
 
     public static string DotnetEnvironment => SetAndGetDotnetEnvironmentByBuildConfiguration();
